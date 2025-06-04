@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Video Call</title>
+  <style>
+    video {
+      width: 45%;
+      margin: 5px;
+      border: 1px solid black;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Video Call</h1>
+  <video id="localVideo" autoplay muted></video>
+  <video id="remoteVideo" autoplay></video>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+
+    let localStream;
+    let peerConnection;
+    const configuration = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    };
+
+    // Get local video/audio
+    async function initMedia() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+      } catch (e) {
+        alert('Could not get user media');
+        console.error(e);
+      }
+    }
+
+    initMedia();
+
+    const roomId = prompt('Enter room ID:');
+    socket.emit('join-room', roomId);
+
+    socket.on('user-connected', (userId) => {
+      console.log('User connected:', userId);
+      callUser(userId);
+    });
+
+    socket.on('signal', async ({ id, signal }) => {
+      if (!peerConnection) {
+        createPeerConnection();
+      }
+
+      if (signal.type === 'offer') {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socket.emit('signal', peerConnection.localDescription);
+      } else if (signal.type === 'answer') {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+      } else if (signal.candidate) {
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+        } catch (e) {
+          console.error('Error adding received ice candidate', e);
+        }
+      }
+    });
+
+    socket.on('user-disconnected', (userId) => {
+      console.log('User disconnected:', userId);
+      if (remoteVideo.srcObject) {
+        remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+      }
+      remoteVideo.srcObject = null;
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+    });
+
+    function createPeerConnection() {
+      peerConnection = new RTCPeerConnection(configuration);
+
+      peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+          socket.emit('signal', { candidate: event.candidate });
+        }
+      };
+
+      peerConnection.ontrack = event => {
+        remoteVideo.srcObject = event.streams[0];
+      };
+
+      localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+      });
+    }
+
+    async function callUser(userId) {
+      createPeerConnection();
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('signal', peerConnection.localDescription);
+    }
+  </script>
+</body>
+</html>
