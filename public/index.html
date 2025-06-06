@@ -28,8 +28,9 @@
     <button id="toggleAudio">Mute</button>
     <button id="disconnect">Disconnect Call</button>
     <button id="endCall">End Call</button>
+    <button id="shareScreen">Share Screen</button> <!-- New button for screen sharing -->
   </div>
-<div id="callStatus" style="margin-top: 20px; font-size: 18px; color: red; font-weight: bold;"></div>
+  <div id="callStatus" style="margin-top: 20px; font-size: 18px; color: red; font-weight: bold;"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -41,49 +42,14 @@
     const toggleAudioBtn = document.getElementById('toggleAudio');
     const disconnectBtn = document.getElementById('disconnect');
     const callStatus = document.getElementById('callStatus');
-const endCallBtn = document.getElementById('endCall');
-
-endCallBtn.onclick = () => {
-  socket.emit('end-call', roomId); // notify server to end call for everyone
-  disconnectCallUI();
-};
-
-socket.on('call-ended', () => {
-  disconnectCallUI();
-});
-
-function disconnectCallUI() {
-  // Stop remote video
-  if (remoteVideo.srcObject) {
-    remoteVideo.srcObject.getTracks().forEach(track => track.stop());
-  }
-  remoteVideo.srcObject = null;
-
-  // Close peer connection
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
-  }
-
-  // Stop local media
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-  }
-  localVideo.srcObject = null;
-
-  // Show disconnect message
-  callStatus.textContent = 'Call Disconnected';
-
-  // Optionally disable controls
-  toggleAudioBtn.disabled = true;
-  toggleVideoBtn.disabled = true;
-  endCallBtn.disabled = true;
-}
-
+    const endCallBtn = document.getElementById('endCall');
+    const shareScreenBtn = document.getElementById('shareScreen');  // Share screen button
 
     let localStream;
     let peerConnection;
     let roomId;
+    let screenStream;  // Variable to store screen stream
+    let isScreenSharing = false;  // Flag to track if screen sharing is enabled
 
     const configuration = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -148,8 +114,10 @@ function disconnectCallUI() {
         remoteVideo.srcObject = event.streams[0];
       };
 
-      localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
+      // Use the screen or video stream for the peer connection
+      const streamToAdd = isScreenSharing ? screenStream : localStream;
+      streamToAdd.getTracks().forEach(track => {
+        peerConnection.addTrack(track, streamToAdd);
       });
     }
 
@@ -192,6 +160,7 @@ function disconnectCallUI() {
       endCall();
     };
 
+    // End the call
     function endCall() {
       // Stop remote video
       if (remoteVideo.srcObject) {
@@ -203,6 +172,67 @@ function disconnectCallUI() {
       if (peerConnection) {
         peerConnection.close();
         peerConnection = null;
+      }
+
+      // Stop local media
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      localVideo.srcObject = null;
+
+      // Show disconnect message
+      callStatus.textContent = 'Call Disconnected';
+
+      // Optionally disable controls
+      toggleAudioBtn.disabled = true;
+      toggleVideoBtn.disabled = true;
+      endCallBtn.disabled = true;
+      shareScreenBtn.disabled = true;  // Disable screen sharing button
+    }
+
+    // Start/stop screen sharing
+    shareScreenBtn.onclick = async () => {
+      if (isScreenSharing) {
+        stopScreenSharing();
+      } else {
+        startScreenSharing();
+      }
+    };
+
+    async function startScreenSharing() {
+      try {
+        screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+
+        // Replace the local stream with the screen stream
+        localVideo.srcObject = screenStream;
+        isScreenSharing = true;
+        shareScreenBtn.textContent = 'Stop Sharing Screen';
+
+        // Update peer connection with screen stream
+        if (peerConnection) {
+          screenStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, screenStream);
+          });
+        }
+      } catch (err) {
+        alert('Could not share screen');
+        console.error('Error sharing screen:', err);
+      }
+    }
+
+    function stopScreenSharing() {
+      const tracks = screenStream.getTracks();
+      tracks.forEach(track => track.stop());
+
+      localVideo.srcObject = localStream;
+      isScreenSharing = false;
+      shareScreenBtn.textContent = 'Share Screen';
+
+      // Update peer connection to use the video stream again
+      if (peerConnection) {
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
       }
     }
   </script>
