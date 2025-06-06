@@ -220,38 +220,30 @@
 
       async function startScreenSharing() {
         try {
-          // Check if it's a mobile device
           const isMobile = /iPhone|iPad|iPod|Android/i.test(
             navigator.userAgent
           );
-
-          // If it's a mobile device, alert the user that screen sharing is not supported (for iOS)
           if (isMobile) {
-            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-            if (isIOS) {
-              alert(
-                "Screen sharing is not supported on iOS mobile browsers (Safari). Please use a desktop browser."
-              );
-            } else {
-              alert("Screen sharing is not supported on your mobile browser.");
-            }
+            alert("Screen sharing is not supported on mobile browsers.");
             return;
           }
 
-          // For non-mobile devices, proceed with normal screen sharing
+          // Get the screen stream
           screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: true,
           });
 
-          // Replace the local stream with the screen stream
+          // Update the local video element
           localVideo.srcObject = screenStream;
           isScreenSharing = true;
           shareScreenBtn.textContent = "Stop Sharing Screen";
 
-          // Update peer connection with screen stream
-          if (peerConnection) {
-            screenStream.getTracks().forEach((track) => {
-              peerConnection.addTrack(track, screenStream);
+          // Replace the video track for all peer connections
+          for (const userId in peerConnections) {
+            peerConnections[userId].getSenders().forEach((sender) => {
+              if (sender.track.kind === "video") {
+                sender.replaceTrack(screenStream.getVideoTracks()[0]);
+              }
             });
           }
         } catch (err) {
@@ -264,14 +256,17 @@
         const tracks = screenStream.getTracks();
         tracks.forEach((track) => track.stop());
 
+        // Revert to the local camera stream
         localVideo.srcObject = localStream;
         isScreenSharing = false;
         shareScreenBtn.textContent = "Share Screen";
 
-        // Update peer connection to use the video stream again
-        if (peerConnection) {
-          localStream.getTracks().forEach((track) => {
-            peerConnection.addTrack(track, localStream);
+        // Replace the video track for all peer connections with the local camera video
+        for (const userId in peerConnections) {
+          peerConnections[userId].getSenders().forEach((sender) => {
+            if (sender.track.kind === "video") {
+              sender.replaceTrack(localStream.getVideoTracks()[0]);
+            }
           });
         }
       }
