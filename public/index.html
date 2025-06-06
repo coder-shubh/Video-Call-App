@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Simple Video Call</title>
+    <title>FaceTimey</title>
     <style>
       video {
         width: 45%;
@@ -239,8 +239,8 @@
           shareScreenBtn.textContent = "Stop Sharing Screen";
 
           // Replace the video track for all peer connections
-          for (const userId in peerConnections) {
-            peerConnections[userId].getSenders().forEach((sender) => {
+          if (peerConnection) {
+            peerConnection.getSenders().forEach((sender) => {
               if (sender.track.kind === "video") {
                 sender.replaceTrack(screenStream.getVideoTracks()[0]);
               }
@@ -262,8 +262,8 @@
         shareScreenBtn.textContent = "Share Screen";
 
         // Replace the video track for all peer connections with the local camera video
-        for (const userId in peerConnections) {
-          peerConnections[userId].getSenders().forEach((sender) => {
+        if (peerConnection) {
+          peerConnection.getSenders().forEach((sender) => {
             if (sender.track.kind === "video") {
               sender.replaceTrack(localStream.getVideoTracks()[0]);
             }
