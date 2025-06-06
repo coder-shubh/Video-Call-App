@@ -8,6 +8,14 @@
       margin: 5px;
       border: 1px solid black;
     }
+    #controls {
+      margin: 10px;
+    }
+    button {
+      margin-right: 10px;
+      padding: 8px 15px;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
@@ -15,20 +23,72 @@
   <video id="localVideo" autoplay muted></video>
   <video id="remoteVideo" autoplay></video>
 
+  <div id="controls">
+    <button id="toggleVideo">Turn Camera Off</button>
+    <button id="toggleAudio">Mute</button>
+    <button id="disconnect">Disconnect Call</button>
+    <button id="endCall">End Call</button>
+  </div>
+<div id="callStatus" style="margin-top: 20px; font-size: 18px; color: red; font-weight: bold;"></div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
 
     const localVideo = document.getElementById('localVideo');
     const remoteVideo = document.getElementById('remoteVideo');
+    const toggleVideoBtn = document.getElementById('toggleVideo');
+    const toggleAudioBtn = document.getElementById('toggleAudio');
+    const disconnectBtn = document.getElementById('disconnect');
+    const callStatus = document.getElementById('callStatus');
+const endCallBtn = document.getElementById('endCall');
+
+endCallBtn.onclick = () => {
+  socket.emit('end-call', roomId); // notify server to end call for everyone
+  disconnectCallUI();
+};
+
+socket.on('call-ended', () => {
+  disconnectCallUI();
+});
+
+function disconnectCallUI() {
+  // Stop remote video
+  if (remoteVideo.srcObject) {
+    remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+  }
+  remoteVideo.srcObject = null;
+
+  // Close peer connection
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  // Stop local media
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+  }
+  localVideo.srcObject = null;
+
+  // Show disconnect message
+  callStatus.textContent = 'Call Disconnected';
+
+  // Optionally disable controls
+  toggleAudioBtn.disabled = true;
+  toggleVideoBtn.disabled = true;
+  endCallBtn.disabled = true;
+}
+
 
     let localStream;
     let peerConnection;
+    let roomId;
+
     const configuration = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
 
-    // Get local video/audio
     async function initMedia() {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -41,7 +101,7 @@
 
     initMedia();
 
-    const roomId = prompt('Enter room ID:');
+    roomId = prompt('Enter room ID:');
     socket.emit('join-room', roomId);
 
     socket.on('user-connected', (userId) => {
@@ -72,14 +132,7 @@
 
     socket.on('user-disconnected', (userId) => {
       console.log('User disconnected:', userId);
-      if (remoteVideo.srcObject) {
-        remoteVideo.srcObject.getTracks().forEach(track => track.stop());
-      }
-      remoteVideo.srcObject = null;
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
+      endCall();
     });
 
     function createPeerConnection() {
@@ -105,6 +158,52 @@
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       socket.emit('signal', peerConnection.localDescription);
+    }
+
+    // Toggle video
+    toggleVideoBtn.onclick = () => {
+      if (!localStream) return;
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack.enabled) {
+        videoTrack.enabled = false;
+        toggleVideoBtn.textContent = 'Turn Camera On';
+      } else {
+        videoTrack.enabled = true;
+        toggleVideoBtn.textContent = 'Turn Camera Off';
+      }
+    };
+
+    // Toggle audio
+    toggleAudioBtn.onclick = () => {
+      if (!localStream) return;
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack.enabled) {
+        audioTrack.enabled = false;
+        toggleAudioBtn.textContent = 'Unmute';
+      } else {
+        audioTrack.enabled = true;
+        toggleAudioBtn.textContent = 'Mute';
+      }
+    };
+
+    // Disconnect call
+    disconnectBtn.onclick = () => {
+      socket.emit('disconnect-call', roomId);
+      endCall();
+    };
+
+    function endCall() {
+      // Stop remote video
+      if (remoteVideo.srcObject) {
+        remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+      }
+      remoteVideo.srcObject = null;
+
+      // Close peer connection
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
     }
   </script>
 </body>
