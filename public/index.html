@@ -20,14 +20,13 @@
 </head>
 <body>
   <h1>Simple Video Call</h1>
-  <video id="localVideo" autoplay muted></video>
-  <video id="remoteVideo" autoplay></video>
+  <video id="localVideo" autoplay muted playsinline></video>
+  <video id="remoteVideo" autoplay playsinline></video>
 
   <div id="controls">
     <button id="toggleVideo">Turn Camera Off</button>
     <button id="toggleAudio">Mute</button>
     <button id="disconnect">Disconnect Call</button>
-    <button id="endCall">End Call</button>
     <button id="shareScreen">Share Screen</button> <!-- New button for screen sharing -->
   </div>
   <div id="callStatus" style="margin-top: 20px; font-size: 18px; color: red; font-weight: bold;"></div>
@@ -42,7 +41,6 @@
     const toggleAudioBtn = document.getElementById('toggleAudio');
     const disconnectBtn = document.getElementById('disconnect');
     const callStatus = document.getElementById('callStatus');
-    const endCallBtn = document.getElementById('endCall');
     const shareScreenBtn = document.getElementById('shareScreen');  // Share screen button
 
     let localStream;
@@ -55,9 +53,19 @@
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
 
+    // Initialize media and set constraints for mobile
     async function initMedia() {
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        // Set lower resolution for mobile devices
+        const constraints = {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: true
+        };
+
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
         localVideo.srcObject = localStream;
       } catch (e) {
         alert('Could not get user media');
@@ -111,12 +119,14 @@
       };
 
       peerConnection.ontrack = event => {
+        console.log('Received remote track:', event);
         remoteVideo.srcObject = event.streams[0];
       };
 
       // Use the screen or video stream for the peer connection
       const streamToAdd = isScreenSharing ? screenStream : localStream;
       streamToAdd.getTracks().forEach(track => {
+        console.log('Adding track:', track);
         peerConnection.addTrack(track, streamToAdd);
       });
     }
@@ -186,7 +196,6 @@
       // Optionally disable controls
       toggleAudioBtn.disabled = true;
       toggleVideoBtn.disabled = true;
-      endCallBtn.disabled = true;
       shareScreenBtn.disabled = true;  // Disable screen sharing button
     }
 
