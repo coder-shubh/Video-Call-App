@@ -411,7 +411,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
- const socket = io();
+      const socket = io();
 
       const localVideo = document.getElementById("localVideo");
       const videoContainer = document.getElementById("videoContainer");
@@ -518,7 +518,11 @@
         // This is crucial for handling incoming offers from new users
         if (!peerConnections[senderId]) {
           // If the server didn't send the username with the signal, we might just use the socketId for the label initially
-          createPeerConnection(senderId, senderId.substring(0, 5)); // Use a truncated ID for label
+          // The server-side code I provided previously *does* send the username with `user-connected` and `existing-users`,
+          // but not necessarily with every `signal` if it's just a candidate or answer.
+          // For a robust solution, you might want to send the username with every signal, or
+          // have a client-side map of socketId to username if you receive it once.
+          createPeerConnection(senderId, senderId.substring(0, 5)); // Use a truncated ID for label as fallback
         }
 
         const pc = peerConnections[senderId];
@@ -616,13 +620,15 @@
         // This ensures the current user's media is sent to the new peer
         // We only add tracks if localStream is available (which it should be after initMedia)
         if (localStream) {
+            // Get all current tracks from localStream (camera + mic)
+            localStream.getTracks().forEach((track) => {
+                pc.addTrack(track, localStream);
+            });
+
+            // If screen sharing is active, also add screen tracks
             if (isScreenSharing && screenStream) {
                 screenStream.getTracks().forEach((track) => {
                     pc.addTrack(track, screenStream);
-                });
-            } else {
-                localStream.getTracks().forEach((track) => {
-                    pc.addTrack(track, localStream);
                 });
             }
         } else {
@@ -762,17 +768,6 @@
         toggleVideoBtn.innerHTML = videoTrack.enabled ?
           '<i class="fas fa-video"></i> Turn Camera Off' :
           '<i class="fas fa-video-slash"></i> Turn Camera On';
-
-        // Notify all peer connections about the track state change
-        for (const id in peerConnections) {
-          const pc = peerConnections[id];
-          const sender = pc.getSenders().find(s => s.track === videoTrack);
-          if (sender) {
-            // Although `enabled` property change propagates, for explicit control or future plans,
-            // you might want to renegotiate or send a data channel message.
-            // For simple enabled/disabled, WebRTC often handles this.
-          }
-        }
       };
 
       // Toggle audio
@@ -785,20 +780,12 @@
         toggleAudioBtn.innerHTML = audioTrack.enabled ?
           '<i class="fas fa-microphone"></i> Mute' :
           '<i class="fas fa-microphone-slash"></i> Unmute';
-
-        // Notify all peer connections about the track state change
-        for (const id in peerConnections) {
-          const pc = peerConnections[id];
-          const sender = pc.getSenders().find(s => s.track === audioTrack);
-          if (sender) {
-            // Same as video track: enabled/disabled usually propagates.
-          }
-        }
       };
 
       // Disconnect call
       disconnectBtn.onclick = () => {
-        socket.emit("disconnect-call"); // RoomId is implicitly known by the server socket
+        // Changed to not send roomId, as server can get it from socket membership
+        socket.emit("disconnect-call");
         endCall();
       };
 
@@ -838,23 +825,6 @@
         toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
         shareScreenBtn.classList.remove('active');
         shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
-
-        // Prompt for new room/user ID if they want to join again
-        // This makes it easier to restart or join a different call
-        // roomId = prompt("Enter room ID to join or create:");
-        // if (!roomId) {
-        //   roomId = "default-room-" + Math.random().toString(36).substring(2, 9);
-        //   alert("No room ID entered. Joining a random room: " + roomId);
-        // }
-        // myUserId = prompt("Enter your user ID (e.g., 'Alice', 'Bob'):");
-        // if (!myUserId) {
-        //   myUserId = "user-" + Math.random().toString(36).substring(2, 6);
-        //   alert("No user ID entered. Using random ID: " + myUserId);
-        // }
-        // roomIdDisplay.textContent = roomId;
-        // myUserIdDisplay.textContent = myUserId;
-        // socket.emit("join-room", roomId, myUserId);
-        // initMedia(); // Re-initialize media
       }
 
       // Start/stop screen sharing
@@ -900,6 +870,7 @@
                 await videoSender.replaceTrack(screenTrack); // Use await here
             } else {
                 // If there's no video sender yet, add the track
+                // This might happen if the peer connection was established before local stream was ready
                 pc.addTrack(screenTrack, screenStream); // Add the screen track
             }
           }
@@ -921,6 +892,7 @@
           screenStream.getTracks().forEach((track) => track.stop());
           screenStream = null;
         }
+        // Revert local video to camera stream
         localVideo.srcObject = localStream;
         isScreenSharing = false;
         shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
@@ -936,6 +908,7 @@
               videoSender.replaceTrack(cameraVideoTrack); // Replace with camera track
             } else {
                 // If the sender was removed for some reason, re-add the camera track
+                // This scenario is less common but good for robustness.
                 pc.addTrack(cameraVideoTrack, localStream);
             }
           }

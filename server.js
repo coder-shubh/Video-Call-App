@@ -1,3 +1,4 @@
+// index.js (No changes from previous good version)
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
@@ -8,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static("public"));
 
 // Store active users in rooms
-// Structure: { roomId: { socketId: { userId: string (user's chosen name), peerConnections: {} }, ... } }
+// Structure: { roomId: { socketId: { userId: string (user's chosen name) }, ... } }
 const activeRooms = {};
 
 io.on("connection", (socket) => {
@@ -20,7 +21,7 @@ io.on("connection", (socket) => {
       activeRooms[roomId] = {};
     }
     // Store both socket.id and the chosen userId (display name)
-    activeRooms[roomId][socket.id] = { userId: userId }; // Removed peerConnections from server state as it's client-side concern
+    activeRooms[roomId][socket.id] = { userId: userId };
 
     // Notify existing users in the room about the new user, sending both socket.id and their chosen name
     socket.to(roomId).emit("user-connected", socket.id, userId);
@@ -38,17 +39,32 @@ io.on("connection", (socket) => {
     socket.on("chat-message", (messageData) => {
       const { message } = messageData;
       // Get the display name of the sender from activeRooms
-      const senderName = activeRooms[roomId]?.[socket.id]?.userId || "Unknown User";
-      io.to(roomId).emit("chat-message", {
-        message: message,
-        userId: senderName, // Use the display name for chat
-      });
+      // Need to find the room first since the socket might be in multiple rooms if not handled carefully
+      // For this setup, a socket only joins one room, so we can iterate or use socket.rooms
+      let currentRoomId = null;
+      for (const room of socket.rooms) {
+          if (room !== socket.id) { // Exclude the default room which is the socket ID
+              currentRoomId = room;
+              break;
+          }
+      }
+
+      if (currentRoomId && activeRooms[currentRoomId]) {
+          const senderName = activeRooms[currentRoomId][socket.id]?.userId || "Unknown User";
+          io.to(currentRoomId).emit("chat-message", {
+            message: message,
+            userId: senderName, // Use the display name for chat
+          });
+      } else {
+          console.warn(`Chat message received from socket ${socket.id} not associated with a known room.`);
+      }
     });
 
     // Handle WebRTC signals for specific target users
     socket.on("signal", (data) => {
       const { targetId, signal } = data;
       // Forward the signal to the intended recipient, indicating the original sender's socket.id
+      // Ensure targetId is in the same room (though socket.io handles direct emits to specific sockets)
       if (activeRooms[roomId] && activeRooms[roomId][targetId]) {
         io.to(targetId).emit("signal", {
           senderId: socket.id,
@@ -89,7 +105,7 @@ io.on("connection", (socket) => {
     // "end-call" event could be used to signify that the room should be dissolved
     // For a group call, this might not be needed unless one user "ends" it for everyone.
     // In a mesh, individual users just leave.
-    socket.on("end-call", (roomId) => {
+    socket.on("end-call", (roomId) => { // This roomId will be from the client, ensure it's valid
       io.in(roomId).emit("call-ended"); // send to everyone in the room
       if (activeRooms[roomId]) {
         delete activeRooms[roomId]; // Remove the room from active rooms
