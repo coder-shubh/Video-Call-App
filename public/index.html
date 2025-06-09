@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FaceTimey - Video Call</title>
+    <title>FaceTimey - Group Video Call</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -68,48 +68,49 @@
         font-weight: normal; /* Less bold than before */
       }
 
-      /* Video Container */
+      /* Video Container for multiple videos */
       #videoContainer {
-        flex-grow: 1; /* Allows video container to take available space */
+        flex-grow: 1;
         display: grid;
-        grid-template-columns: 2fr 1fr; /* Main video larger, local video smaller */
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Flexible grid for videos */
         gap: 15px;
         width: 100%;
-        padding: 0; /* Remove padding here, videos will have their own padding */
+        padding: 0;
         margin-top: 0;
         transition: all 0.3s ease-in-out;
-        /* Height will be determined by flex-grow within the container */
-        min-height: 200px; /* Minimum height for video container */
+        min-height: 200px;
+        overflow-y: auto; /* Allow scrolling if many videos */
       }
 
       .video-wrapper {
         position: relative;
-        background-color: #000; /* Black background for video areas */
+        background-color: #000;
         border-radius: 8px;
-        overflow: hidden; /* Ensure video corners are rounded */
-        display: flex; /* Use flexbox to center video if aspect ratio differs */
+        overflow: hidden;
+        display: flex;
         justify-content: center;
         align-items: center;
+        aspect-ratio: 16/9; /* Maintain aspect ratio */
       }
 
-      .video-wrapper:first-child { /* Remote video is typically larger */
-        grid-column: span 1;
-        height: 100%; /* Take full height */
-      }
-
-      .video-wrapper:last-child { /* Local video is typically smaller */
-        grid-column: span 1;
-        height: 100%;
-        max-height: 180px; /* Limit local video height */
-        align-self: flex-end; /* Align to the bottom right */
-      }
-
-      video {
+      .video-wrapper video {
         width: 100%;
-        height: 100%; /* Fill the wrapper */
-        object-fit: cover; /* Cover the area, cropping if necessary */
-        border-radius: 8px; /* Apply border-radius to the video itself */
-        border: none; /* Remove border */
+        height: 100%;
+        object-fit: cover;
+        border-radius: 8px;
+        border: none;
+      }
+
+      .video-wrapper .user-id-label {
+        position: absolute;
+        bottom: 5px;
+        left: 5px;
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 1;
       }
 
       /* Controls Section */
@@ -307,9 +308,7 @@
           min-height: 150px;
         }
 
-        .video-wrapper:first-child,
-        .video-wrapper:last-child {
-          grid-column: span 1;
+        .video-wrapper {
           height: 200px; /* Fixed height for videos on mobile */
           max-height: unset; /* Remove max-height constraint */
           align-self: auto; /* Reset align-self */
@@ -360,46 +359,32 @@
   </head>
   <body>
     <div class="container">
-      <h1>FaceTimey - Simple Video Call</h1>
+      <h1>FaceTimey - Group Video Call</h1>
 
       <div id="roomInfo">
         <span>Room ID: <strong id="roomIdDisplay"></strong></span>
+        <span>Your ID: <strong id="myUserIdDisplay"></strong></span>
       </div>
 
       <div id="videoContainer" class="fullscreen-container">
         <div class="video-wrapper">
           <video id="localVideo" autoplay muted playsinline></video>
+          <div class="user-id-label">You</div>
           <div class="fullscreen-icon-container">
             <i
               class="fas fa-expand"
-              id="localFullscreenBtn"
+              data-target="localVideo"
               title="Go Full Screen"
             ></i>
             <i
               class="fas fa-compress"
-              id="localExitFullscreenBtn"
-              title="Exit Full Screen"
+              data-target="localVideo"
               style="display: none"
+              title="Exit Full Screen"
             ></i>
           </div>
         </div>
-        <div class="video-wrapper">
-          <video id="remoteVideo" autoplay playsinline></video>
-          <div class="fullscreen-icon-container">
-            <i
-              class="fas fa-expand"
-              id="remoteFullscreenBtn"
-              title="Go Full Screen"
-            ></i>
-            <i
-              class="fas fa-compress"
-              id="remoteExitFullscreenBtn"
-              title="Exit Full Screen"
-              style="display: none"
-            ></i>
-          </div>
         </div>
-      </div>
 
       <div class="controls">
         <button id="toggleVideo"><i class="fas fa-video"></i> Turn Camera Off</button>
@@ -429,7 +414,7 @@
       const socket = io();
 
       const localVideo = document.getElementById("localVideo");
-      const remoteVideo = document.getElementById("remoteVideo");
+      const videoContainer = document.getElementById("videoContainer");
       const toggleVideoBtn = document.getElementById("toggleVideo");
       const toggleAudioBtn = document.getElementById("toggleAudio");
       const disconnectBtn = document.getElementById("disconnect");
@@ -439,29 +424,29 @@
       const sendMessageButton = document.getElementById("sendMessageButton");
       const callStatus = document.getElementById("callStatus");
       const roomIdDisplay = document.getElementById("roomIdDisplay");
-      // const fullscreenBtn = document.getElementById("fullscreenBtn"); // This button is not used in the updated design
-      const localFullscreenBtn = document.getElementById("localFullscreenBtn");
-      const localExitFullscreenBtn = document.getElementById(
-        "localExitFullscreenBtn"
-      );
-      const remoteFullscreenBtn = document.getElementById(
-        "remoteFullscreenBtn"
-      );
-      const remoteExitFullscreenBtn = document.getElementById(
-        "remoteExitFullscreenBtn"
-      );
+      const myUserIdDisplay = document.getElementById("myUserIdDisplay");
 
       let localStream;
-      let peerConnection;
+      // Store multiple peer connections, keyed by the remote socket ID
+      const peerConnections = {};
       let roomId;
+      let myUserId; // To store the user's chosen ID
       let screenStream;
       let isScreenSharing = false;
-      let isLocalFullScreen = false; // Renamed from isFullScreen to be more specific
-      let isRemoteFullScreen = false;
 
       const configuration = {
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       };
+
+      // Helper to get local video track
+      function getLocalVideoTrack() {
+        return localStream ? localStream.getVideoTracks()[0] : null;
+      }
+
+      // Helper to get local audio track
+      function getLocalAudioTrack() {
+        return localStream ? localStream.getAudioTracks()[0] : null;
+      }
 
       // Initialize media
       async function initMedia() {
@@ -478,12 +463,11 @@
           localVideo.srcObject = localStream;
 
           // Initial state: Set active class if tracks are initially enabled.
-          // This assumes media is initialized as enabled.
-          if (localStream.getVideoTracks()[0].enabled) {
+          if (getLocalVideoTrack()?.enabled) {
             toggleVideoBtn.classList.add('active');
             toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
           }
-          if (localStream.getAudioTracks()[0].enabled) {
+          if (getLocalAudioTrack()?.enabled) {
             toggleAudioBtn.classList.add('active');
             toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
           }
@@ -496,102 +480,185 @@
 
       initMedia();
 
-      // Prompt user to enter room ID
+      // Prompt user to enter room ID and user ID
       roomId = prompt("Enter room ID to join or create:");
       if (!roomId) {
-        // Generate a random ID if none entered
         roomId = "default-room-" + Math.random().toString(36).substring(2, 9);
         alert("No room ID entered. Joining a random room: " + roomId);
       }
+      myUserId = prompt("Enter your user ID (e.g., 'Alice', 'Bob'):");
+      if (!myUserId) {
+        myUserId = "user-" + Math.random().toString(36).substring(2, 6);
+        alert("No user ID entered. Using random ID: " + myUserId);
+      }
+
       roomIdDisplay.textContent = roomId;
+      myUserIdDisplay.textContent = myUserId;
 
-      socket.emit("join-room", roomId);
+      socket.emit("join-room", roomId, myUserId);
 
-      socket.on("user-connected", (userId) => {
-        callStatus.textContent = `User ${userId} connected.`;
-        callUser(userId);
+      // When a new user connects to the room
+      socket.on("user-connected", (newUserId, newUserName) => {
+        callStatus.textContent = `User ${newUserName} connected.`;
+        callUser(newUserId); // Initiate call with the new user
       });
 
-      socket.on("signal", async ({ id, signal }) => {
-        if (!peerConnection) {
-          createPeerConnection();
+      // When you join, the server sends a list of existing users in the room
+      socket.on("existing-users", (existingUserIds) => {
+        existingUserIds.forEach((userId) => {
+          callUser(userId); // Initiate call with each existing user
+        });
+      });
+
+      socket.on("signal", async ({ senderId, signal }) => {
+        // If we don't have a peer connection with this sender yet, create one
+        if (!peerConnections[senderId]) {
+          createPeerConnection(senderId);
         }
+
+        const pc = peerConnections[senderId];
 
         try {
-            if (signal.type === "offer") {
-                await peerConnection.setRemoteDescription(
-                new RTCSessionDescription(signal)
-                );
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                socket.emit("signal", peerConnection.localDescription);
-            } else if (signal.type === "answer") {
-                await peerConnection.setRemoteDescription(
-                new RTCSessionDescription(signal)
-                );
-            } else if (signal.candidate) {
-                await peerConnection.addIceCandidate(
-                new RTCIceCandidate(signal.candidate)
-                );
-            }
+          if (signal.type === "offer") {
+            await pc.setRemoteDescription(new RTCSessionDescription(signal));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit("signal", { targetId: senderId, signal: pc.localDescription });
+          } else if (signal.type === "answer") {
+            await pc.setRemoteDescription(new RTCSessionDescription(signal));
+          } else if (signal.candidate) {
+            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          }
         } catch (e) {
-            console.error("Error handling signal:", e);
+          console.error("Error handling signal from", senderId, e);
         }
       });
 
-      socket.on("user-disconnected", () => {
-        callStatus.textContent = "User disconnected. Call ended.";
-        endCall();
+      socket.on("user-disconnected", (userId) => {
+        callStatus.textContent = `User ${userId} disconnected.`;
+        removePeerConnection(userId);
       });
 
-      // Create peer connection
-      function createPeerConnection() {
-        peerConnection = new RTCPeerConnection(configuration);
+      socket.on("call-ended", () => {
+        callStatus.textContent = "The call has been ended by another user.";
+        endCall(); // Clean up if someone explicitly ended the call for everyone
+      });
 
-        peerConnection.onicecandidate = (event) => {
+      // Create peer connection for a specific remote user
+      function createPeerConnection(remoteSocketId) {
+        if (peerConnections[remoteSocketId]) {
+          console.warn(`Peer connection to ${remoteSocketId} already exists.`);
+          return;
+        }
+
+        const pc = new RTCPeerConnection(configuration);
+
+        pc.onicecandidate = (event) => {
           if (event.candidate) {
-            socket.emit("signal", { candidate: event.candidate });
+            // Send candidate to the specific remote user
+            socket.emit("signal", { targetId: remoteSocketId, signal: { candidate: event.candidate } });
           }
         };
 
-        peerConnection.ontrack = (event) => {
+        pc.ontrack = (event) => {
+          console.log(`Received track from ${remoteSocketId}`);
+          // Find or create a video element for this remote user
+          let remoteVideo = document.getElementById(`video-${remoteSocketId}`);
+          if (!remoteVideo) {
+            const videoWrapper = document.createElement("div");
+            videoWrapper.className = "video-wrapper";
+            videoWrapper.id = `wrapper-${remoteSocketId}`;
+
+            remoteVideo = document.createElement("video");
+            remoteVideo.id = `video-${remoteSocketId}`;
+            remoteVideo.autoplay = true;
+            remoteVideo.playsInline = true;
+
+            const userIdLabel = document.createElement("div");
+            userIdLabel.className = "user-id-label";
+            // For now, using socketId as userId, but you could map socketId to a friendly name
+            userIdLabel.textContent = `User: ${remoteSocketId}`; // Ideally, get user ID from server
+
+            const fullscreenIconContainer = document.createElement("div");
+            fullscreenIconContainer.className = "fullscreen-icon-container";
+            fullscreenIconContainer.innerHTML = `
+              <i class="fas fa-expand" data-target="video-${remoteSocketId}" title="Go Full Screen"></i>
+              <i class="fas fa-compress" data-target="video-${remoteSocketId}" style="display: none" title="Exit Full Screen"></i>
+            `;
+            addFullscreenListeners(fullscreenIconContainer);
+
+            videoWrapper.appendChild(remoteVideo);
+            videoWrapper.appendChild(userIdLabel);
+            videoWrapper.appendChild(fullscreenIconContainer);
+            videoContainer.appendChild(videoWrapper);
+          }
           remoteVideo.srcObject = event.streams[0];
-          callStatus.textContent = "Connected!";
+          callStatus.textContent = `Connected with ${remoteSocketId}!`;
         };
 
-        const streamToAdd = isScreenSharing ? screenStream : localStream;
-        if (streamToAdd) {
-            streamToAdd.getTracks().forEach((track) => {
-            peerConnection.addTrack(track, streamToAdd);
+        // Add local tracks to the new peer connection
+        if (isScreenSharing && screenStream) {
+            screenStream.getTracks().forEach((track) => {
+                pc.addTrack(track, screenStream);
             });
+        } else if (localStream) {
+            localStream.getTracks().forEach((track) => {
+                pc.addTrack(track, localStream);
+            });
+        }
+
+        peerConnections[remoteSocketId] = pc;
+        return pc;
+      }
+
+      // Initiate call to a specific remote user
+      async function callUser(remoteSocketId) {
+        if (remoteSocketId === socket.id) {
+          // Don't try to call yourself
+          return;
+        }
+
+        const pc = createPeerConnection(remoteSocketId);
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          // Send offer to the specific remote user
+          socket.emit("signal", { targetId: remoteSocketId, signal: pc.localDescription });
+        } catch (e) {
+          console.error(`Error calling user ${remoteSocketId}:`, e);
         }
       }
 
-      // Handle fullscreen toggle for local video
-      localFullscreenBtn.addEventListener("click", () => {
-        if (isLocalFullScreen) {
-          exitFullScreen(); // Call exit fullscreen on the document
-        } else {
-          enterFullScreen(localVideo);
+      // Remove a peer connection and its video element
+      function removePeerConnection(remoteSocketId) {
+        if (peerConnections[remoteSocketId]) {
+          peerConnections[remoteSocketId].close();
+          delete peerConnections[remoteSocketId];
         }
-      });
-
-      localExitFullscreenBtn.addEventListener("click", () => {
-        exitFullScreen(); // Call exit fullscreen on the document
-      });
-
-      // Handle fullscreen toggle for remote video
-      remoteFullscreenBtn.addEventListener("click", () => {
-        if (isRemoteFullScreen) {
-          exitFullScreen(); // Call exit fullscreen on the document
-        } else {
-          enterFullScreen(remoteVideo);
+        const videoWrapper = document.getElementById(`wrapper-${remoteSocketId}`);
+        if (videoWrapper) {
+          videoContainer.removeChild(videoWrapper);
         }
-      });
+      }
 
-      remoteExitFullscreenBtn.addEventListener("click", () => {
-        exitFullScreen(); // Call exit fullscreen on the document
-      });
+      // Fullscreen functionality for dynamically created video elements
+      function addFullscreenListeners(container) {
+        const expandBtn = container.querySelector(".fa-expand");
+        const compressBtn = container.querySelector(".fa-compress");
+        const videoId = expandBtn.dataset.target;
+        const videoElement = document.getElementById(videoId);
+
+        expandBtn.addEventListener("click", () => {
+          enterFullScreen(videoElement);
+        });
+
+        compressBtn.addEventListener("click", () => {
+          exitFullScreen();
+        });
+      }
+
+      // Add fullscreen listeners for the local video initially
+      addFullscreenListeners(localVideo.closest('.video-wrapper').querySelector('.fullscreen-icon-container'));
 
 
       // Function to request fullscreen for a video element
@@ -611,8 +678,6 @@
       }
 
       // Function to exit fullscreen for a video element
-      // This function is for the entire document, not a specific element.
-      // We listen to fullscreenchange event to update button visibility.
       function exitFullScreen() {
         if (document.exitFullscreen) {
           document.exitFullscreen();
@@ -629,120 +694,55 @@
       }
 
       // Listen for fullscreen change event to update button visibility
-      document.addEventListener('fullscreenchange', (event) => {
-        if (!document.fullscreenElement) {
-          // If no element is in fullscreen, reset all fullscreen buttons
-          localFullscreenBtn.style.display = "block";
-          localExitFullscreenBtn.style.display = "none";
-          isLocalFullScreen = false;
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.addEventListener('msfullscreenchange', handleFullscreenChange);
 
-          remoteFullscreenBtn.style.display = "block";
-          remoteExitFullscreenBtn.style.display = "none";
-          isRemoteFullScreen = false;
-        } else if (document.fullscreenElement === localVideo) {
-          isLocalFullScreen = true;
-          localFullscreenBtn.style.display = "none";
-          localExitFullscreenBtn.style.display = "block";
-        } else if (document.fullscreenElement === remoteVideo) {
-          isRemoteFullScreen = true;
-          remoteFullscreenBtn.style.display = "none";
-          remoteExitFullscreenBtn.style.display = "block";
-        }
-      });
-      document.addEventListener('webkitfullscreenchange', (event) => { /* Chrome, Safari & Opera */
-        if (!document.webkitFullscreenElement) {
-          localFullscreenBtn.style.display = "block";
-          localExitFullscreenBtn.style.display = "none";
-          isLocalFullScreen = false;
+      function handleFullscreenChange() {
+        const allVideoWrappers = document.querySelectorAll('.video-wrapper');
+        allVideoWrappers.forEach(wrapper => {
+          const videoElement = wrapper.querySelector('video');
+          const expandBtn = wrapper.querySelector('.fa-expand');
+          const compressBtn = wrapper.querySelector('.fa-compress');
 
-          remoteFullscreenBtn.style.display = "block";
-          remoteExitFullscreenBtn.style.display = "none";
-          isRemoteFullScreen = false;
-        } else if (document.webkitFullscreenElement === localVideo) {
-          isLocalFullScreen = true;
-          localFullscreenBtn.style.display = "none";
-          localExitFullscreenBtn.style.display = "block";
-        } else if (document.webkitFullscreenElement === remoteVideo) {
-          isRemoteFullScreen = true;
-          remoteFullscreenBtn.style.display = "none";
-          remoteExitFullscreenBtn.style.display = "block";
-        }
-      });
-      document.addEventListener('mozfullscreenchange', (event) => { /* Firefox */
-        if (!document.mozFullScreenElement) {
-          localFullscreenBtn.style.display = "block";
-          localExitFullscreenBtn.style.display = "none";
-          isLocalFullScreen = false;
-
-          remoteFullscreenBtn.style.display = "block";
-          remoteExitFullscreenBtn.style.display = "none";
-          isRemoteFullScreen = false;
-        } else if (document.mozFullScreenElement === localVideo) {
-          isLocalFullScreen = true;
-          localFullscreenBtn.style.display = "none";
-          localExitFullscreenBtn.style.display = "block";
-        } else if (document.mozFullScreenElement === remoteVideo) {
-          isRemoteFullScreen = true;
-          remoteFullscreenBtn.style.display = "none";
-          remoteExitFullscreenBtn.style.display = "block";
-        }
-      });
-      document.addEventListener('msfullscreenchange', (event) => { /* IE/Edge */
-        if (!document.msFullscreenElement) {
-          localFullscreenBtn.style.display = "block";
-          localExitFullscreenBtn.style.display = "none";
-          isLocalFullScreen = false;
-
-          remoteFullscreenBtn.style.display = "block";
-          remoteExitFullscreenBtn.style.display = "none";
-          isRemoteFullScreen = false;
-        } else if (document.msFullscreenElement === localVideo) {
-          isLocalFullScreen = true;
-          localFullscreenBtn.style.display = "none";
-          localExitFullscreenBtn.style.display = "block";
-        } else if (document.msFullscreenElement === remoteVideo) {
-          isRemoteFullScreen = true;
-          remoteFullscreenBtn.style.display = "none";
-          remoteExitFullscreenBtn.style.display = "block";
-        }
-      });
-
-
-      async function callUser(userId) {
-        createPeerConnection();
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        socket.emit("signal", peerConnection.localDescription);
+          if (videoElement && expandBtn && compressBtn) {
+            if (document.fullscreenElement === videoElement ||
+                document.webkitFullscreenElement === videoElement ||
+                document.mozFullScreenElement === videoElement ||
+                document.msFullscreenElement === videoElement) {
+              expandBtn.style.display = 'none';
+              compressBtn.style.display = 'block';
+            } else {
+              expandBtn.style.display = 'block';
+              compressBtn.style.display = 'none';
+            }
+          }
+        });
       }
 
       // Toggle video
       toggleVideoBtn.onclick = () => {
-        if (!localStream) return;
-        const videoTrack = localStream.getVideoTracks()[0];
-        if (videoTrack.enabled) {
-          videoTrack.enabled = false;
-          toggleVideoBtn.innerHTML = '<i class="fas fa-video-slash"></i> Turn Camera On';
-          toggleVideoBtn.classList.remove('active');
-        } else {
-          videoTrack.enabled = true;
-          toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
-          toggleVideoBtn.classList.add('active');
-        }
+        const videoTrack = getLocalVideoTrack();
+        if (!videoTrack) return;
+
+        videoTrack.enabled = !videoTrack.enabled;
+        toggleVideoBtn.classList.toggle('active');
+        toggleVideoBtn.innerHTML = videoTrack.enabled ?
+          '<i class="fas fa-video"></i> Turn Camera Off' :
+          '<i class="fas fa-video-slash"></i> Turn Camera On';
       };
 
       // Toggle audio
       toggleAudioBtn.onclick = () => {
-        if (!localStream) return;
-        const audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack.enabled) {
-          audioTrack.enabled = false;
-          toggleAudioBtn.innerHTML = '<i class="fas fa-microphone-slash"></i> Unmute';
-          toggleAudioBtn.classList.remove('active');
-        } else {
-          audioTrack.enabled = true;
-          toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
-          toggleAudioBtn.classList.add('active');
-        }
+        const audioTrack = getLocalAudioTrack();
+        if (!audioTrack) return;
+
+        audioTrack.enabled = !audioTrack.enabled;
+        toggleAudioBtn.classList.toggle('active');
+        toggleAudioBtn.innerHTML = audioTrack.enabled ?
+          '<i class="fas fa-microphone"></i> Mute' :
+          '<i class="fas fa-microphone-slash"></i> Unmute';
       };
 
       // Disconnect call
@@ -752,31 +752,32 @@
       };
 
       function endCall() {
-        if (remoteVideo.srcObject) {
-          remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
-          remoteVideo.srcObject = null;
-        }
-
-        if (peerConnection) {
-          peerConnection.close();
-          peerConnection = null;
-        }
-
+        // Stop all local media tracks
         if (localStream) {
           localStream.getTracks().forEach((track) => track.stop());
           localVideo.srcObject = null;
         }
-
         if (screenStream) {
-          screenStream.getTracks().forEach(track => track.stop());
+          screenStream.getTracks().forEach((track) => track.stop());
           screenStream = null;
         }
+
+        // Close all peer connections
+        for (const userId in peerConnections) {
+          if (peerConnections[userId]) {
+            peerConnections[userId].close();
+            delete peerConnections[userId];
+          }
+        }
+
+        // Remove all remote video elements
+        document.querySelectorAll('.video-wrapper:not(:first-child)').forEach(el => el.remove());
 
         callStatus.textContent = "Call Disconnected";
         toggleAudioBtn.disabled = true;
         toggleVideoBtn.disabled = true;
         shareScreenBtn.disabled = true;
-        disconnectBtn.disabled = true; // Disable disconnect button after call ends
+        disconnectBtn.disabled = true;
 
         // Reset button states
         toggleVideoBtn.classList.remove('active');
@@ -812,7 +813,6 @@
 
           const screenTrack = screenStream.getVideoTracks()[0];
 
-          // Listen for screen sharing stop event
           screenTrack.onended = () => {
             stopScreenSharing();
           };
@@ -820,15 +820,16 @@
           localVideo.srcObject = screenStream;
           isScreenSharing = true;
           shareScreenBtn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop Sharing';
-          shareScreenBtn.classList.add('active'); // Add active class when sharing
+          shareScreenBtn.classList.add('active');
 
-          if (peerConnection) {
-            const videoSender = peerConnection.getSenders().find(sender => sender.track.kind === 'video');
+          // Replace video tracks for all existing peer connections
+          for (const id in peerConnections) {
+            const pc = peerConnections[id];
+            const videoSender = pc.getSenders().find(sender => sender.track && sender.track.kind === 'video');
             if (videoSender) {
                 videoSender.replaceTrack(screenTrack);
             } else {
-                // If there's no video sender yet, add the track
-                peerConnection.addTrack(screenTrack, screenStream);
+                pc.addTrack(screenTrack, screenStream);
             }
           }
         } catch (err) {
@@ -840,7 +841,7 @@
           }
           isScreenSharing = false;
           shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
-          shareScreenBtn.classList.remove('active'); // Remove active class on error
+          shareScreenBtn.classList.remove('active');
         }
       }
 
@@ -852,12 +853,17 @@
         localVideo.srcObject = localStream;
         isScreenSharing = false;
         shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
-        shareScreenBtn.classList.remove('active'); // Remove active class when stopped
+        shareScreenBtn.classList.remove('active');
 
-        if (peerConnection && localStream) {
-          const videoSender = peerConnection.getSenders().find(sender => sender.track.kind === 'video');
-          if (videoSender) {
-            videoSender.replaceTrack(localStream.getVideoTracks()[0]);
+        // Replace video tracks back to camera for all existing peer connections
+        const cameraVideoTrack = getLocalVideoTrack();
+        if (cameraVideoTrack) {
+          for (const id in peerConnections) {
+            const pc = peerConnections[id];
+            const videoSender = pc.getSenders().find(sender => sender.track && sender.track.kind === 'video');
+            if (videoSender) {
+              videoSender.replaceTrack(cameraVideoTrack);
+            }
           }
         }
       }
@@ -866,33 +872,29 @@
       sendMessageButton.onclick = () => {
         if (chatInput.value.trim()) {
           const message = chatInput.value;
-          socket.emit("chat-message", { message, roomId });
-          displayMessage("You: " + message, 'self'); // Add a class for self messages
-          chatInput.value = "";
+          socket.emit("chat-message", { message: message, roomId: roomId }); // roomId is implicitly known by the server
+          displayMessage(message, myUserId, "self-message"); // Display immediately
+          chatInput.value = ""; // Clear input
         }
       };
 
-      // Allow sending messages with Enter key
-      chatInput.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter') {
+      chatInput.addEventListener("keypress", (event) => {
+        if (event.key === "Enter") {
           sendMessageButton.click();
         }
       });
 
-      socket.on("chat-message", (messageData) => {
-        displayMessage(messageData.message, 'remote'); // Add a class for remote messages
+      socket.on("chat-message", (data) => {
+        const { message, userId } = data;
+        const messageType = userId === myUserId ? "self-message" : "remote-message";
+        displayMessage(message, userId, messageType);
       });
 
-      function displayMessage(message, type) {
-        const messageElement = document.createElement("div");
-        messageElement.textContent = message;
-        messageElement.classList.add('chat-message'); // Generic class
-        if (type === 'self') {
-            messageElement.classList.add('self-message');
-        } else {
-            messageElement.classList.add('remote-message');
-        }
-        chatMessages.appendChild(messageElement);
+      function displayMessage(message, userId, type) {
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("chat-message", type);
+        messageDiv.innerHTML = `<strong>${userId}:</strong> ${message}`;
+        chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
       }
     </script>
