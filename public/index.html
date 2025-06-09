@@ -4,7 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FaceTimey - Video Call</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
     <style>
+      /* General Body and Container */
       * {
         margin: 0;
         padding: 0;
@@ -12,106 +23,193 @@
       }
 
       body {
-        font-family: Arial, sans-serif;
-        background-color: #f2f2f2;
+        font-family: 'Google Sans', 'Roboto', Arial, sans-serif; /* Prefer Google fonts */
+        background-color: #1a1a1a; /* Dark background for the entire page */
         display: flex;
         justify-content: center;
         align-items: center;
         height: 100vh;
-        overflow: hidden;
+        overflow: hidden; /* Hide scrollbars on body */
+        color: #e8eaed; /* Light text color for contrast */
       }
 
       .container {
-        width: 95%;
-        max-width: 1200px;
+        width: 98%; /* Slightly wider container */
+        max-width: 1400px; /* Increased max-width */
         display: flex;
         flex-direction: column;
         align-items: center;
-        background-color: white;
+        background-color: #202124; /* Darker background for the main content area */
         border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); /* More pronounced shadow */
+        padding: 20px; /* Add some padding around the container */
+        height: 95vh; /* Take up more vertical space */
+        overflow: hidden; /* Hide container scrollbars, let internal elements handle it */
       }
 
       h1 {
-        margin-top: 20px;
-        font-size: 24px;
-        color: #333;
+        display: none; /* Hide the main title, Google Meet is very minimal */
       }
 
+      /* Room Info - Positioned more subtly */
+      #roomInfo {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #9aa0a6; /* Muted grey for room info */
+        text-align: center;
+        padding: 5px 15px;
+        background-color: #2f3032;
+        border-radius: 20px;
+        margin-bottom: 20px;
+      }
+
+      #roomIdDisplay {
+        color: #e8eaed;
+        font-weight: normal; /* Less bold than before */
+      }
+
+      /* Video Container */
       #videoContainer {
+        flex-grow: 1; /* Allows video container to take available space */
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px;
+        grid-template-columns: 2fr 1fr; /* Main video larger, local video smaller */
+        gap: 15px;
         width: 100%;
-        padding: 20px;
-        margin-top: 20px;
+        padding: 0; /* Remove padding here, videos will have their own padding */
+        margin-top: 0;
         transition: all 0.3s ease-in-out;
+        /* Height will be determined by flex-grow within the container */
+        min-height: 200px; /* Minimum height for video container */
+      }
+
+      .video-wrapper {
+        position: relative;
+        background-color: #000; /* Black background for video areas */
+        border-radius: 8px;
+        overflow: hidden; /* Ensure video corners are rounded */
+        display: flex; /* Use flexbox to center video if aspect ratio differs */
+        justify-content: center;
+        align-items: center;
+      }
+
+      .video-wrapper:first-child { /* Remote video is typically larger */
+        grid-column: span 1;
+        height: 100%; /* Take full height */
+      }
+
+      .video-wrapper:last-child { /* Local video is typically smaller */
+        grid-column: span 1;
+        height: 100%;
+        max-height: 180px; /* Limit local video height */
+        align-self: flex-end; /* Align to the bottom right */
       }
 
       video {
         width: 100%;
-        border-radius: 8px;
-        border: 1px solid #ddd;
-        height: 200px;
-        object-fit: cover;
+        height: 100%; /* Fill the wrapper */
+        object-fit: cover; /* Cover the area, cropping if necessary */
+        border-radius: 8px; /* Apply border-radius to the video itself */
+        border: none; /* Remove border */
       }
 
+      /* Controls Section */
       .controls {
         display: flex;
         justify-content: center;
-        margin: 20px 0;
-        gap: 15px;
-        flex-wrap: wrap;
+        gap: 20px; /* Increased gap between buttons */
+        margin: 20px 0 10px 0; /* Adjust margin to give more space to chat */
+        padding: 10px 0;
+        background-color: #2f3032; /* Slightly different background for controls */
+        border-radius: 8px;
+        width: 100%;
+        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
       }
 
       button {
-        padding: 12px 20px;
-        font-size: 14px;
-        color: #fff;
-        background-color: #4caf50;
+        padding: 10px 18px; /* Adjusted padding for a more compact look */
+        font-size: 15px;
+        color: #e8eaed; /* Light text for buttons */
+        background-color: #3c4043; /* Darker grey for active buttons */
         border: none;
-        border-radius: 4px;
+        border-radius: 24px; /* Pill-shaped buttons */
         cursor: pointer;
-        transition: background-color 0.3s;
+        transition: background-color 0.3s, transform 0.2s;
+        display: flex; /* Allows icon and text alignment */
+        align-items: center;
+        gap: 8px; /* Space between icon and text if applicable */
       }
 
       button:hover {
-        background-color: #45a049;
+        background-color: #5f6368; /* Lighter grey on hover */
+        transform: translateY(-2px); /* Slight lift effect */
+      }
+
+      button:active {
+        transform: translateY(0);
       }
 
       .controls button:disabled {
-        background-color: #ccc;
+        background-color: #4a4a4a;
+        color: #9aa0a6;
         cursor: not-allowed;
       }
 
+      /* Specific button styles for mic/camera toggles */
+      #toggleAudio:not(.active),
+      #toggleVideo:not(.active) {
+        background-color: #ea4335; /* Red for active mute/camera off state (when not active) */
+      }
+
+      #toggleAudio.active,
+      #toggleVideo.active { /* Class to add when active (e.g., mic on) */
+        background-color: #3c4043; /* Dark grey when active */
+      }
+
+      #shareScreen.active { /* Style for when screen sharing is active */
+        background-color: #4CAF50; /* Green color when active */
+        color: #fff;
+      }
+
+
+      #disconnect {
+        background-color: #ea4335; /* Red for disconnect button */
+      }
+
+      #disconnect:hover {
+        background-color: #d1392c; /* Darker red on hover */
+      }
+
+      /* Call Status */
       .callStatus {
         margin-top: 10px;
-        font-size: 16px;
-        color: red;
-        font-weight: bold;
+        font-size: 14px;
+        color: #ea4335; /* Red for warning/disconnected status */
+        font-weight: normal;
       }
 
-      #roomInfo {
-        margin-top: 20px;
-        text-align: center;
-      }
-
-      /* Full Screen */
-      .video-wrapper {
-        position: relative;
-      }
-
-      #fullscreenBtn {
+      /* Fullscreen Icons */
+      .fullscreen-icon-container {
         position: absolute;
         top: 10px;
         right: 10px;
-        background-color: rgba(0, 0, 0, 0.5);
-        color: white;
-        padding: 5px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
+        display: flex;
+        flex-direction: row; /* Icons in a row */
+        gap: 8px;
         z-index: 10;
+      }
+
+      .fullscreen-icon-container i {
+        color: #e8eaed; /* Light color for icons */
+        font-size: 18px; /* Smaller icon size */
+        cursor: pointer;
+        background-color: rgba(60, 64, 67, 0.7); /* Dark semi-transparent background */
+        border-radius: 50%;
+        padding: 8px; /* Larger padding for easier clicking */
+        transition: background-color 0.3s;
+      }
+
+      .fullscreen-icon-container i:hover {
+        background-color: rgba(95, 99, 104, 0.9); /* Lighter on hover */
       }
 
       /* Chat UI */
@@ -119,101 +217,156 @@
         display: flex;
         flex-direction: column;
         width: 100%;
-        margin-top: 20px;
+        margin-top: 10px; /* Reduced margin-top to fit better */
+        background-color: #2f3032; /* Match control bar background */
+        border-radius: 8px;
+        padding: 15px;
+        flex-shrink: 0; /* Prevent chat from shrinking too much */
+        max-height: 30vh; /* Allow chat to take up to 30% of viewport height initially */
+        min-height: 120px; /* Minimum height to remain usable */
       }
 
       .chat-messages {
-        height: 200px;
+        flex-grow: 1; /* Allow messages to take available height */
         overflow-y: auto;
         padding: 10px;
-        background-color: #f9f9f9;
-        border: 1px solid #ddd;
+        background-color: #3c4043; /* Darker background for messages */
+        border: none; /* Remove border */
         border-radius: 5px;
+        color: #e8eaed; /* Light text for messages */
+        margin-bottom: 10px; /* Space before input */
       }
+
+      .chat-messages div {
+        margin-bottom: 8px; /* Space between messages */
+        line-height: 1.4;
+        word-wrap: break-word; /* Ensure long words break */
+      }
+
+      /* Chat message specific styles */
+      .chat-message.self-message {
+        text-align: right;
+        color: #8ab4f8; /* A different color for self messages */
+      }
+      .chat-message.remote-message {
+        text-align: left;
+        color: #e8eaed;
+      }
+
 
       .chat-input-container {
         display: flex;
-        margin-top: 10px;
+        /* margin-top: 15px; Removed, handled by .chat-messages margin-bottom */
+        gap: 10px;
+        flex-shrink: 0; /* Prevent input from shrinking */
       }
 
       .chat-input {
-        width: 90%;
-        padding: 10px;
-        font-size: 16px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        flex-grow: 1; /* Allow input to take remaining space */
+        padding: 10px 15px;
+        font-size: 15px;
+        border: none;
+        border-radius: 20px; /* Rounded input field */
+        background-color: #3c4043; /* Dark background for input */
+        color: #e8eaed;
+        outline: none; /* Remove outline on focus */
+      }
+
+      .chat-input::placeholder {
+        color: #9aa0a6; /* Muted placeholder text */
       }
 
       .chat-send-button {
-        padding: 12px 20px;
-        margin-left: 10px;
-        background-color: #4caf50;
-        color: #fff;
+        padding: 10px 20px;
+        background-color: #8ab4f8; /* Google Meet blue for send button */
+        color: #202124; /* Dark text on blue background */
+        font-weight: bold;
         border: none;
-        border-radius: 4px;
+        border-radius: 20px;
         cursor: pointer;
+        transition: background-color 0.3s;
+        flex-shrink: 0; /* Prevent button from shrinking */
       }
 
       .chat-send-button:hover {
-        background-color: #45a049;
+        background-color: #a0c3ff; /* Lighter blue on hover */
       }
 
-      /* Position the full-screen icons inside the video box */
-      .video-wrapper {
-        position: relative;
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .container {
+            padding: 10px;
+            height: auto; /* Allow container to grow on smaller screens */
+            max-height: 100vh; /* Max height for container */
+            overflow-y: auto; /* Allow scrolling if content overflows */
+        }
+
+        #videoContainer {
+          grid-template-columns: 1fr; /* Stack videos on small screens */
+          height: auto; /* Allow height to adjust */
+          min-height: 150px;
+        }
+
+        .video-wrapper:first-child,
+        .video-wrapper:last-child {
+          grid-column: span 1;
+          height: 200px; /* Fixed height for videos on mobile */
+          max-height: unset; /* Remove max-height constraint */
+          align-self: auto; /* Reset align-self */
+        }
+
+        .controls {
+          flex-direction: column; /* Stack controls vertically */
+          gap: 10px;
+          padding: 10px;
+          margin: 15px 0 10px 0; /* Adjust margins */
+        }
+
+        button {
+          width: 100%; /* Full width buttons */
+        }
+
+        .chat-container {
+            margin-top: 10px;
+            max-height: 250px; /* Fixed max height for chat on small screens */
+            min-height: 100px;
+        }
+
+        .chat-messages {
+            min-height: 80px; /* Ensure chat messages have a minimum height */
+        }
       }
 
-      .fullscreen-icon-container {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        z-index: 10;
-      }
+       /* Add a subtle scrollbar style for chat messages */
+       .chat-messages::-webkit-scrollbar {
+        width: 8px;
+        border-radius: 4px;
+       }
 
-      .fullscreen-icon-container i {
-        color: white;
-        font-size: 24px;
-        cursor: pointer;
-        background-color: rgba(0, 0, 0, 0.5);
-        border-radius: 50%;
-        padding: 5px;
-        transition: background-color 0.3s;
-      }
+       .chat-messages::-webkit-scrollbar-track {
+        background: #2f3032;
+        border-radius: 4px;
+       }
 
-      .fullscreen-icon-container i:hover {
-        background-color: rgba(0, 0, 0, 0.8);
-      }
+       .chat-messages::-webkit-scrollbar-thumb {
+        background-color: #5f6368;
+        border-radius: 4px;
+       }
 
-      /* Optional: Change video container layout */
-      #videoContainer {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px;
-        padding: 20px;
-      }
+       .chat-messages::-webkit-scrollbar-thumb:hover {
+        background-color: #7a7d80;
+       }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>FaceTimey - Simple Video Call</h1>
 
-      <!-- Room Information -->
       <div id="roomInfo">
         <span>Room ID: <strong id="roomIdDisplay"></strong></span>
       </div>
 
-      <!-- Video Container (for local and remote videos) -->
-      <!-- Add Font Awesome for icons -->
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-      />
-
       <div id="videoContainer" class="fullscreen-container">
-        <!-- Local Video -->
         <div class="video-wrapper">
           <video id="localVideo" autoplay muted playsinline></video>
           <div class="fullscreen-icon-container">
@@ -230,7 +383,6 @@
             ></i>
           </div>
         </div>
-        <!-- Remote Video -->
         <div class="video-wrapper">
           <video id="remoteVideo" autoplay playsinline></video>
           <div class="fullscreen-icon-container">
@@ -249,18 +401,15 @@
         </div>
       </div>
 
-      <!-- Controls Section -->
       <div class="controls">
-        <button id="toggleVideo">Turn Camera Off</button>
-        <button id="toggleAudio">Mute</button>
-        <button id="shareScreen">Share Screen</button>
-        <button id="disconnect">Leave Call</button>
+        <button id="toggleVideo"><i class="fas fa-video"></i> Turn Camera Off</button>
+        <button id="toggleAudio"><i class="fas fa-microphone"></i> Mute</button>
+        <button id="shareScreen"><i class="fas fa-desktop"></i> Share Screen</button>
+        <button id="disconnect"><i class="fas fa-phone-slash"></i> Leave Call</button>
       </div>
 
-      <!-- Call Status -->
       <div class="callStatus" id="callStatus"></div>
 
-      <!-- Chat Section -->
       <div class="chat-container">
         <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-input-container">
@@ -290,7 +439,7 @@
       const sendMessageButton = document.getElementById("sendMessageButton");
       const callStatus = document.getElementById("callStatus");
       const roomIdDisplay = document.getElementById("roomIdDisplay");
-      const fullscreenBtn = document.getElementById("fullscreenBtn");
+      // const fullscreenBtn = document.getElementById("fullscreenBtn"); // This button is not used in the updated design
       const localFullscreenBtn = document.getElementById("localFullscreenBtn");
       const localExitFullscreenBtn = document.getElementById(
         "localExitFullscreenBtn"
@@ -307,8 +456,7 @@
       let roomId;
       let screenStream;
       let isScreenSharing = false;
-      let isFullScreen = false;
-      let isLocalFullScreen = false;
+      let isLocalFullScreen = false; // Renamed from isFullScreen to be more specific
       let isRemoteFullScreen = false;
 
       const configuration = {
@@ -328,21 +476,39 @@
 
           localStream = await navigator.mediaDevices.getUserMedia(constraints);
           localVideo.srcObject = localStream;
+
+          // Initial state: Set active class if tracks are initially enabled.
+          // This assumes media is initialized as enabled.
+          if (localStream.getVideoTracks()[0].enabled) {
+            toggleVideoBtn.classList.add('active');
+            toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
+          }
+          if (localStream.getAudioTracks()[0].enabled) {
+            toggleAudioBtn.classList.add('active');
+            toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
+          }
+
         } catch (e) {
-          alert("Could not get user media");
-          console.error(e);
+          alert("Could not get user media. Please ensure camera and microphone permissions are granted.");
+          console.error("Error initializing media:", e);
         }
       }
 
       initMedia();
 
       // Prompt user to enter room ID
-      roomId = prompt("Enter room ID:");
+      roomId = prompt("Enter room ID to join or create:");
+      if (!roomId) {
+        // Generate a random ID if none entered
+        roomId = "default-room-" + Math.random().toString(36).substring(2, 9);
+        alert("No room ID entered. Joining a random room: " + roomId);
+      }
       roomIdDisplay.textContent = roomId;
 
       socket.emit("join-room", roomId);
 
       socket.on("user-connected", (userId) => {
+        callStatus.textContent = `User ${userId} connected.`;
         callUser(userId);
       });
 
@@ -351,29 +517,30 @@
           createPeerConnection();
         }
 
-        if (signal.type === "offer") {
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(signal)
-          );
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          socket.emit("signal", peerConnection.localDescription);
-        } else if (signal.type === "answer") {
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(signal)
-          );
-        } else if (signal.candidate) {
-          try {
-            await peerConnection.addIceCandidate(
-              new RTCIceCandidate(signal.candidate)
-            );
-          } catch (e) {
-            console.error("Error adding received ice candidate", e);
-          }
+        try {
+            if (signal.type === "offer") {
+                await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(signal)
+                );
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.emit("signal", peerConnection.localDescription);
+            } else if (signal.type === "answer") {
+                await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(signal)
+                );
+            } else if (signal.candidate) {
+                await peerConnection.addIceCandidate(
+                new RTCIceCandidate(signal.candidate)
+                );
+            }
+        } catch (e) {
+            console.error("Error handling signal:", e);
         }
       });
 
       socket.on("user-disconnected", () => {
+        callStatus.textContent = "User disconnected. Call ended.";
         endCall();
       });
 
@@ -389,43 +556,43 @@
 
         peerConnection.ontrack = (event) => {
           remoteVideo.srcObject = event.streams[0];
+          callStatus.textContent = "Connected!";
         };
 
         const streamToAdd = isScreenSharing ? screenStream : localStream;
-        streamToAdd.getTracks().forEach((track) => {
-          peerConnection.addTrack(track, streamToAdd);
-        });
+        if (streamToAdd) {
+            streamToAdd.getTracks().forEach((track) => {
+            peerConnection.addTrack(track, streamToAdd);
+            });
+        }
       }
 
       // Handle fullscreen toggle for local video
       localFullscreenBtn.addEventListener("click", () => {
         if (isLocalFullScreen) {
-          exitFullScreen(localVideo);
-          isLocalFullScreen = false;
-          localFullscreenBtn.style.display = "block";
-          localExitFullscreenBtn.style.display = "none";
+          exitFullScreen(); // Call exit fullscreen on the document
         } else {
           enterFullScreen(localVideo);
-          isLocalFullScreen = true;
-          localFullscreenBtn.style.display = "none";
-          localExitFullscreenBtn.style.display = "block";
         }
+      });
+
+      localExitFullscreenBtn.addEventListener("click", () => {
+        exitFullScreen(); // Call exit fullscreen on the document
       });
 
       // Handle fullscreen toggle for remote video
       remoteFullscreenBtn.addEventListener("click", () => {
         if (isRemoteFullScreen) {
-          exitFullScreen(remoteVideo);
-          isRemoteFullScreen = false;
-          remoteFullscreenBtn.style.display = "block";
-          remoteExitFullscreenBtn.style.display = "none";
+          exitFullScreen(); // Call exit fullscreen on the document
         } else {
           enterFullScreen(remoteVideo);
-          isRemoteFullScreen = true;
-          remoteFullscreenBtn.style.display = "none";
-          remoteExitFullscreenBtn.style.display = "block";
         }
       });
+
+      remoteExitFullscreenBtn.addEventListener("click", () => {
+        exitFullScreen(); // Call exit fullscreen on the document
+      });
+
 
       // Function to request fullscreen for a video element
       function enterFullScreen(videoElement) {
@@ -444,7 +611,9 @@
       }
 
       // Function to exit fullscreen for a video element
-      function exitFullScreen(videoElement) {
+      // This function is for the entire document, not a specific element.
+      // We listen to fullscreenchange event to update button visibility.
+      function exitFullScreen() {
         if (document.exitFullscreen) {
           document.exitFullscreen();
         } else if (document.mozCancelFullScreen) {
@@ -459,6 +628,86 @@
         }
       }
 
+      // Listen for fullscreen change event to update button visibility
+      document.addEventListener('fullscreenchange', (event) => {
+        if (!document.fullscreenElement) {
+          // If no element is in fullscreen, reset all fullscreen buttons
+          localFullscreenBtn.style.display = "block";
+          localExitFullscreenBtn.style.display = "none";
+          isLocalFullScreen = false;
+
+          remoteFullscreenBtn.style.display = "block";
+          remoteExitFullscreenBtn.style.display = "none";
+          isRemoteFullScreen = false;
+        } else if (document.fullscreenElement === localVideo) {
+          isLocalFullScreen = true;
+          localFullscreenBtn.style.display = "none";
+          localExitFullscreenBtn.style.display = "block";
+        } else if (document.fullscreenElement === remoteVideo) {
+          isRemoteFullScreen = true;
+          remoteFullscreenBtn.style.display = "none";
+          remoteExitFullscreenBtn.style.display = "block";
+        }
+      });
+      document.addEventListener('webkitfullscreenchange', (event) => { /* Chrome, Safari & Opera */
+        if (!document.webkitFullscreenElement) {
+          localFullscreenBtn.style.display = "block";
+          localExitFullscreenBtn.style.display = "none";
+          isLocalFullScreen = false;
+
+          remoteFullscreenBtn.style.display = "block";
+          remoteExitFullscreenBtn.style.display = "none";
+          isRemoteFullScreen = false;
+        } else if (document.webkitFullscreenElement === localVideo) {
+          isLocalFullScreen = true;
+          localFullscreenBtn.style.display = "none";
+          localExitFullscreenBtn.style.display = "block";
+        } else if (document.webkitFullscreenElement === remoteVideo) {
+          isRemoteFullScreen = true;
+          remoteFullscreenBtn.style.display = "none";
+          remoteExitFullscreenBtn.style.display = "block";
+        }
+      });
+      document.addEventListener('mozfullscreenchange', (event) => { /* Firefox */
+        if (!document.mozFullScreenElement) {
+          localFullscreenBtn.style.display = "block";
+          localExitFullscreenBtn.style.display = "none";
+          isLocalFullScreen = false;
+
+          remoteFullscreenBtn.style.display = "block";
+          remoteExitFullscreenBtn.style.display = "none";
+          isRemoteFullScreen = false;
+        } else if (document.mozFullScreenElement === localVideo) {
+          isLocalFullScreen = true;
+          localFullscreenBtn.style.display = "none";
+          localExitFullscreenBtn.style.display = "block";
+        } else if (document.mozFullScreenElement === remoteVideo) {
+          isRemoteFullScreen = true;
+          remoteFullscreenBtn.style.display = "none";
+          remoteExitFullscreenBtn.style.display = "block";
+        }
+      });
+      document.addEventListener('msfullscreenchange', (event) => { /* IE/Edge */
+        if (!document.msFullscreenElement) {
+          localFullscreenBtn.style.display = "block";
+          localExitFullscreenBtn.style.display = "none";
+          isLocalFullScreen = false;
+
+          remoteFullscreenBtn.style.display = "block";
+          remoteExitFullscreenBtn.style.display = "none";
+          isRemoteFullScreen = false;
+        } else if (document.msFullscreenElement === localVideo) {
+          isLocalFullScreen = true;
+          localFullscreenBtn.style.display = "none";
+          localExitFullscreenBtn.style.display = "block";
+        } else if (document.msFullscreenElement === remoteVideo) {
+          isRemoteFullScreen = true;
+          remoteFullscreenBtn.style.display = "none";
+          remoteExitFullscreenBtn.style.display = "block";
+        }
+      });
+
+
       async function callUser(userId) {
         createPeerConnection();
         const offer = await peerConnection.createOffer();
@@ -472,10 +721,12 @@
         const videoTrack = localStream.getVideoTracks()[0];
         if (videoTrack.enabled) {
           videoTrack.enabled = false;
-          toggleVideoBtn.textContent = "Turn Camera On";
+          toggleVideoBtn.innerHTML = '<i class="fas fa-video-slash"></i> Turn Camera On';
+          toggleVideoBtn.classList.remove('active');
         } else {
           videoTrack.enabled = true;
-          toggleVideoBtn.textContent = "Turn Camera Off";
+          toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
+          toggleVideoBtn.classList.add('active');
         }
       };
 
@@ -485,10 +736,12 @@
         const audioTrack = localStream.getAudioTracks()[0];
         if (audioTrack.enabled) {
           audioTrack.enabled = false;
-          toggleAudioBtn.textContent = "Unmute";
+          toggleAudioBtn.innerHTML = '<i class="fas fa-microphone-slash"></i> Unmute';
+          toggleAudioBtn.classList.remove('active');
         } else {
           audioTrack.enabled = true;
-          toggleAudioBtn.textContent = "Mute";
+          toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
+          toggleAudioBtn.classList.add('active');
         }
       };
 
@@ -501,8 +754,8 @@
       function endCall() {
         if (remoteVideo.srcObject) {
           remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
+          remoteVideo.srcObject = null;
         }
-        remoteVideo.srcObject = null;
 
         if (peerConnection) {
           peerConnection.close();
@@ -511,13 +764,27 @@
 
         if (localStream) {
           localStream.getTracks().forEach((track) => track.stop());
+          localVideo.srcObject = null;
         }
-        localVideo.srcObject = null;
+
+        if (screenStream) {
+          screenStream.getTracks().forEach(track => track.stop());
+          screenStream = null;
+        }
 
         callStatus.textContent = "Call Disconnected";
         toggleAudioBtn.disabled = true;
         toggleVideoBtn.disabled = true;
         shareScreenBtn.disabled = true;
+        disconnectBtn.disabled = true; // Disable disconnect button after call ends
+
+        // Reset button states
+        toggleVideoBtn.classList.remove('active');
+        toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
+        toggleAudioBtn.classList.remove('active');
+        toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
+        shareScreenBtn.classList.remove('active');
+        shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
       }
 
       // Start/stop screen sharing
@@ -535,7 +802,7 @@
             navigator.userAgent
           );
           if (isMobile) {
-            alert("Screen sharing is not supported on mobile browsers.");
+            alert("Screen sharing is not fully supported on mobile browsers due to browser limitations.");
             return;
           }
 
@@ -543,57 +810,90 @@
             video: true,
           });
 
+          const screenTrack = screenStream.getVideoTracks()[0];
+
+          // Listen for screen sharing stop event
+          screenTrack.onended = () => {
+            stopScreenSharing();
+          };
+
           localVideo.srcObject = screenStream;
           isScreenSharing = true;
-          shareScreenBtn.textContent = "Stop Sharing Screen";
+          shareScreenBtn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop Sharing';
+          shareScreenBtn.classList.add('active'); // Add active class when sharing
 
           if (peerConnection) {
-            peerConnection.getSenders().forEach((sender) => {
-              if (sender.track.kind === "video") {
-                sender.replaceTrack(screenStream.getVideoTracks()[0]);
-              }
-            });
+            const videoSender = peerConnection.getSenders().find(sender => sender.track.kind === 'video');
+            if (videoSender) {
+                videoSender.replaceTrack(screenTrack);
+            } else {
+                // If there's no video sender yet, add the track
+                peerConnection.addTrack(screenTrack, screenStream);
+            }
           }
         } catch (err) {
-          alert("Could not share screen");
-          console.error("Error sharing screen:", err);
+          if (err.name === 'NotAllowedError') {
+              alert('Screen sharing permission denied. Please allow screen sharing to proceed.');
+          } else {
+              alert("Could not share screen. Please try again.");
+              console.error("Error sharing screen:", err);
+          }
+          isScreenSharing = false;
+          shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
+          shareScreenBtn.classList.remove('active'); // Remove active class on error
         }
       }
 
       function stopScreenSharing() {
-        const tracks = screenStream.getTracks();
-        tracks.forEach((track) => track.stop());
+        if (screenStream) {
+          screenStream.getTracks().forEach((track) => track.stop());
+          screenStream = null;
+        }
         localVideo.srcObject = localStream;
         isScreenSharing = false;
-        shareScreenBtn.textContent = "Share Screen";
+        shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
+        shareScreenBtn.classList.remove('active'); // Remove active class when stopped
 
-        if (peerConnection) {
-          peerConnection.getSenders().forEach((sender) => {
-            if (sender.track.kind === "video") {
-              sender.replaceTrack(localStream.getVideoTracks()[0]);
-            }
-          });
+        if (peerConnection && localStream) {
+          const videoSender = peerConnection.getSenders().find(sender => sender.track.kind === 'video');
+          if (videoSender) {
+            videoSender.replaceTrack(localStream.getVideoTracks()[0]);
+          }
         }
       }
 
-      // Chat functionality (optional)
+      // Chat functionality
       sendMessageButton.onclick = () => {
         if (chatInput.value.trim()) {
           const message = chatInput.value;
           socket.emit("chat-message", { message, roomId });
-          displayMessage("You: " + message);
+          displayMessage("You: " + message, 'self'); // Add a class for self messages
           chatInput.value = "";
         }
       };
 
-      socket.on("chat-message", (messageData) => {
-        displayMessage(messageData.message);
+      // Allow sending messages with Enter key
+      chatInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+          sendMessageButton.click();
+        }
       });
 
-      function displayMessage(message) {
+      socket.on("chat-message", (messageData) => {
+        displayMessage(messageData.message, 'remote'); // Add a class for remote messages
+      });
+
+      function displayMessage(message, type) {
         const messageElement = document.createElement("div");
         messageElement.textContent = message;
+        messageElement.classList.add('chat-message'); // Generic class
+        if (type === 'self') {
+            messageElement.classList.add('self-message');
+        } else {
+            messageElement.classList.add('remote-message');
+        }
         chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
       }
     </script>
   </body>
