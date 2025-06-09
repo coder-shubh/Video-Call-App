@@ -411,7 +411,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+ const socket = io();
 
       const localVideo = document.getElementById("localVideo");
       const videoContainer = document.getElementById("videoContainer");
@@ -498,25 +498,34 @@
       socket.emit("join-room", roomId, myUserId);
 
       // When a new user connects to the room
+      // newUserId is the socket.id of the new user, newUserName is their chosen display name
       socket.on("user-connected", (newUserId, newUserName) => {
         callStatus.textContent = `User ${newUserName} connected.`;
-        callUser(newUserId); // Initiate call with the new user
+        // Immediately try to call the new user to establish a peer connection
+        callUser(newUserId, newUserName);
       });
 
       // When you join, the server sends a list of existing users in the room
-      socket.on("existing-users", (existingUserIds) => {
-        existingUserIds.forEach((userId) => {
-          callUser(userId); // Initiate call with each existing user
+      socket.on("existing-users", (existingUserIdsAndNames) => {
+        // existingUserIdsAndNames should be an array of objects like { id: socketId, name: userName }
+        existingUserIdsAndNames.forEach(({ id: userId, name: userName }) => {
+          callUser(userId, userName); // Initiate call with each existing user
         });
       });
 
       socket.on("signal", async ({ senderId, signal }) => {
         // If we don't have a peer connection with this sender yet, create one
+        // This is crucial for handling incoming offers from new users
         if (!peerConnections[senderId]) {
-          createPeerConnection(senderId);
+          // If the server didn't send the username with the signal, we might just use the socketId for the label initially
+          createPeerConnection(senderId, senderId.substring(0, 5)); // Use a truncated ID for label
         }
 
         const pc = peerConnections[senderId];
+        if (!pc) { // Fallback if creation somehow failed
+          console.error("Peer connection not found for senderId:", senderId);
+          return;
+        }
 
         try {
           if (signal.type === "offer") {
@@ -527,6 +536,7 @@
           } else if (signal.type === "answer") {
             await pc.setRemoteDescription(new RTCSessionDescription(signal));
           } else if (signal.candidate) {
+            // Ensure candidate is an RTCIceCandidate object
             await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
           }
         } catch (e) {
@@ -545,10 +555,11 @@
       });
 
       // Create peer connection for a specific remote user
-      function createPeerConnection(remoteSocketId) {
+      // Now accepts a userName to display
+      function createPeerConnection(remoteSocketId, remoteUserName) {
         if (peerConnections[remoteSocketId]) {
-          console.warn(`Peer connection to ${remoteSocketId} already exists.`);
-          return;
+          console.warn(`Peer connection to ${remoteSocketId} already exists. Returning existing.`);
+          return peerConnections[remoteSocketId]; // Return existing if it exists
         }
 
         const pc = new RTCPeerConnection(configuration);
@@ -573,11 +584,14 @@
             remoteVideo.id = `video-${remoteSocketId}`;
             remoteVideo.autoplay = true;
             remoteVideo.playsInline = true;
+            // IMPORTANT: Do NOT mute remote videos by default unless intended for specific use cases.
+            // remoteVideo.muted = true; // This would prevent audio from remote users
 
             const userIdLabel = document.createElement("div");
             userIdLabel.className = "user-id-label";
-            // For now, using socketId as userId, but you could map socketId to a friendly name
-            userIdLabel.textContent = `User: ${remoteSocketId}`; // Ideally, get user ID from server
+            // Use the provided remoteUserName for display
+            userIdLabel.textContent = remoteUserName ? `User: ${remoteUserName}` : `User: ${remoteSocketId.substring(0, 5)}`;
+
 
             const fullscreenIconContainer = document.createElement("div");
             fullscreenIconContainer.className = "fullscreen-icon-container";
@@ -585,47 +599,62 @@
               <i class="fas fa-expand" data-target="video-${remoteSocketId}" title="Go Full Screen"></i>
               <i class="fas fa-compress" data-target="video-${remoteSocketId}" style="display: none" title="Exit Full Screen"></i>
             `;
-            addFullscreenListeners(fullscreenIconContainer);
+            addFullscreenListeners(fullscreenIconContainer); // Add event listeners for this new video
 
             videoWrapper.appendChild(remoteVideo);
             videoWrapper.appendChild(userIdLabel);
             videoWrapper.appendChild(fullscreenIconContainer);
             videoContainer.appendChild(videoWrapper);
           }
+          // THIS IS THE CRITICAL LINE for displaying the remote video
+          // Assign the stream to the video element
           remoteVideo.srcObject = event.streams[0];
-          callStatus.textContent = `Connected with ${remoteSocketId}!`;
+          callStatus.textContent = `Connected with ${remoteUserName || remoteSocketId}!`;
         };
 
-        // Add local tracks to the new peer connection
-        if (isScreenSharing && screenStream) {
-            screenStream.getTracks().forEach((track) => {
-                pc.addTrack(track, screenStream);
-            });
-        } else if (localStream) {
-            localStream.getTracks().forEach((track) => {
-                pc.addTrack(track, localStream);
-            });
+        // Add local tracks to the new peer connection immediately after creation
+        // This ensures the current user's media is sent to the new peer
+        // We only add tracks if localStream is available (which it should be after initMedia)
+        if (localStream) {
+            if (isScreenSharing && screenStream) {
+                screenStream.getTracks().forEach((track) => {
+                    pc.addTrack(track, screenStream);
+                });
+            } else {
+                localStream.getTracks().forEach((track) => {
+                    pc.addTrack(track, localStream);
+                });
+            }
+        } else {
+            console.warn("localStream not available when creating peer connection for", remoteSocketId);
         }
+
 
         peerConnections[remoteSocketId] = pc;
         return pc;
       }
 
       // Initiate call to a specific remote user
-      async function callUser(remoteSocketId) {
+      // Now accepts remoteUserName
+      async function callUser(remoteSocketId, remoteUserName) {
         if (remoteSocketId === socket.id) {
           // Don't try to call yourself
           return;
         }
 
-        const pc = createPeerConnection(remoteSocketId);
-        try {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          // Send offer to the specific remote user
-          socket.emit("signal", { targetId: remoteSocketId, signal: pc.localDescription });
-        } catch (e) {
-          console.error(`Error calling user ${remoteSocketId}:`, e);
+        // Only create/call if a connection doesn't exist already to prevent duplicate offers
+        if (!peerConnections[remoteSocketId]) {
+            const pc = createPeerConnection(remoteSocketId, remoteUserName);
+            try {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                // Send offer to the specific remote user
+                socket.emit("signal", { targetId: remoteSocketId, signal: pc.localDescription });
+            } catch (e) {
+                console.error(`Error calling user ${remoteSocketId}:`, e);
+            }
+        } else {
+            console.log(`Already connected to ${remoteSocketId}.`);
         }
       }
 
@@ -638,6 +667,7 @@
         const videoWrapper = document.getElementById(`wrapper-${remoteSocketId}`);
         if (videoWrapper) {
           videoContainer.removeChild(videoWrapper);
+          console.log(`Removed video for ${remoteSocketId}`);
         }
       }
 
@@ -649,7 +679,7 @@
         const videoElement = document.getElementById(videoId);
 
         expandBtn.addEventListener("click", () => {
-          enterFullScreen(videoElement);
+          if (videoElement) enterFullScreen(videoElement);
         });
 
         compressBtn.addEventListener("click", () => {
@@ -658,6 +688,7 @@
       }
 
       // Add fullscreen listeners for the local video initially
+      // This part was correct, just ensuring it's called once.
       addFullscreenListeners(localVideo.closest('.video-wrapper').querySelector('.fullscreen-icon-container'));
 
 
@@ -731,6 +762,17 @@
         toggleVideoBtn.innerHTML = videoTrack.enabled ?
           '<i class="fas fa-video"></i> Turn Camera Off' :
           '<i class="fas fa-video-slash"></i> Turn Camera On';
+
+        // Notify all peer connections about the track state change
+        for (const id in peerConnections) {
+          const pc = peerConnections[id];
+          const sender = pc.getSenders().find(s => s.track === videoTrack);
+          if (sender) {
+            // Although `enabled` property change propagates, for explicit control or future plans,
+            // you might want to renegotiate or send a data channel message.
+            // For simple enabled/disabled, WebRTC often handles this.
+          }
+        }
       };
 
       // Toggle audio
@@ -743,11 +785,20 @@
         toggleAudioBtn.innerHTML = audioTrack.enabled ?
           '<i class="fas fa-microphone"></i> Mute' :
           '<i class="fas fa-microphone-slash"></i> Unmute';
+
+        // Notify all peer connections about the track state change
+        for (const id in peerConnections) {
+          const pc = peerConnections[id];
+          const sender = pc.getSenders().find(s => s.track === audioTrack);
+          if (sender) {
+            // Same as video track: enabled/disabled usually propagates.
+          }
+        }
       };
 
       // Disconnect call
       disconnectBtn.onclick = () => {
-        socket.emit("disconnect-call", roomId);
+        socket.emit("disconnect-call"); // RoomId is implicitly known by the server socket
         endCall();
       };
 
@@ -763,21 +814,22 @@
         }
 
         // Close all peer connections
-        for (const userId in peerConnections) {
-          if (peerConnections[userId]) {
-            peerConnections[userId].close();
-            delete peerConnections[userId];
+        for (const remoteSocketId in peerConnections) {
+          if (peerConnections[remoteSocketId]) {
+            peerConnections[remoteSocketId].close();
+            delete peerConnections[remoteSocketId];
           }
         }
 
-        // Remove all remote video elements
+        // Remove all remote video elements (all video wrappers except the first one which is local)
         document.querySelectorAll('.video-wrapper:not(:first-child)').forEach(el => el.remove());
 
         callStatus.textContent = "Call Disconnected";
-        toggleAudioBtn.disabled = true;
-        toggleVideoBtn.disabled = true;
-        shareScreenBtn.disabled = true;
-        disconnectBtn.disabled = true;
+        // Re-enable media buttons so user can start a new call
+        toggleAudioBtn.disabled = false;
+        toggleVideoBtn.disabled = false;
+        shareScreenBtn.disabled = false;
+        disconnectBtn.disabled = false; // Disconnect should be enabled to be pressed
 
         // Reset button states
         toggleVideoBtn.classList.remove('active');
@@ -786,6 +838,23 @@
         toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
         shareScreenBtn.classList.remove('active');
         shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
+
+        // Prompt for new room/user ID if they want to join again
+        // This makes it easier to restart or join a different call
+        // roomId = prompt("Enter room ID to join or create:");
+        // if (!roomId) {
+        //   roomId = "default-room-" + Math.random().toString(36).substring(2, 9);
+        //   alert("No room ID entered. Joining a random room: " + roomId);
+        // }
+        // myUserId = prompt("Enter your user ID (e.g., 'Alice', 'Bob'):");
+        // if (!myUserId) {
+        //   myUserId = "user-" + Math.random().toString(36).substring(2, 6);
+        //   alert("No user ID entered. Using random ID: " + myUserId);
+        // }
+        // roomIdDisplay.textContent = roomId;
+        // myUserIdDisplay.textContent = myUserId;
+        // socket.emit("join-room", roomId, myUserId);
+        // initMedia(); // Re-initialize media
       }
 
       // Start/stop screen sharing
@@ -823,13 +892,15 @@
           shareScreenBtn.classList.add('active');
 
           // Replace video tracks for all existing peer connections
+          // Important: You should iterate through peerConnections map, not just a single peer
           for (const id in peerConnections) {
             const pc = peerConnections[id];
             const videoSender = pc.getSenders().find(sender => sender.track && sender.track.kind === 'video');
             if (videoSender) {
-                videoSender.replaceTrack(screenTrack);
+                await videoSender.replaceTrack(screenTrack); // Use await here
             } else {
-                pc.addTrack(screenTrack, screenStream);
+                // If there's no video sender yet, add the track
+                pc.addTrack(screenTrack, screenStream); // Add the screen track
             }
           }
         } catch (err) {
@@ -857,14 +928,21 @@
 
         // Replace video tracks back to camera for all existing peer connections
         const cameraVideoTrack = getLocalVideoTrack();
-        if (cameraVideoTrack) {
+        if (cameraVideoTrack) { // Ensure camera video track exists before trying to replace
           for (const id in peerConnections) {
             const pc = peerConnections[id];
             const videoSender = pc.getSenders().find(sender => sender.track && sender.track.kind === 'video');
             if (videoSender) {
-              videoSender.replaceTrack(cameraVideoTrack);
+              videoSender.replaceTrack(cameraVideoTrack); // Replace with camera track
+            } else {
+                // If the sender was removed for some reason, re-add the camera track
+                pc.addTrack(cameraVideoTrack, localStream);
             }
           }
+        } else {
+            console.warn("Local camera video track not available to revert to after screen sharing.");
+            // If camera was off, consider if you want to just remove the screen track without adding camera back
+            // Or if you want to explicitly start camera if it's off.
         }
       }
 
@@ -872,7 +950,8 @@
       sendMessageButton.onclick = () => {
         if (chatInput.value.trim()) {
           const message = chatInput.value;
-          socket.emit("chat-message", { message: message, roomId: roomId }); // roomId is implicitly known by the server
+          // No need to send roomId, server knows which room this socket is in
+          socket.emit("chat-message", { message: message });
           displayMessage(message, myUserId, "self-message"); // Display immediately
           chatInput.value = ""; // Clear input
         }
@@ -885,7 +964,7 @@
       });
 
       socket.on("chat-message", (data) => {
-        const { message, userId } = data;
+        const { message, userId } = data; // userId is the name sent from server
         const messageType = userId === myUserId ? "self-message" : "remote-message";
         displayMessage(message, userId, messageType);
       });
