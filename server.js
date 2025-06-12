@@ -1,115 +1,124 @@
-// index.js (No changes from previous good version)
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
 const io = require("socket.io")(http);
+const sanitizeHtml = require("sanitize-html"); // For sanitizing chat messages
 
 const PORT = process.env.PORT || 3000;
 
 app.use(express.static("public"));
 
 // Store active users in rooms
-// Structure: { roomId: { socketId: { userId: string (user's chosen name) }, ... } }
+// Structure: { roomId: { socketId: { userId: string, status: { audio: boolean, video: boolean } } } }
 const activeRooms = {};
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   socket.on("join-room", (roomId, userId) => {
+    // Validate roomId and userId
+    if (!roomId || !userId || typeof roomId !== "string" || typeof userId !== "string") {
+      socket.emit("error", "Invalid room ID or user ID");
+      return;
+    }
+
     socket.join(roomId);
     if (!activeRooms[roomId]) {
       activeRooms[roomId] = {};
     }
-    // Store both socket.id and the chosen userId (display name)
-    activeRooms[roomId][socket.id] = { userId: userId };
+    activeRooms[roomId][socket.id] = { userId: sanitizeHtml(userId), status: { audio: true, video: true } };
 
-    // Notify existing users in the room about the new user, sending both socket.id and their chosen name
+    // Notify existing users in the room about the new user
     socket.to(roomId).emit("user-connected", socket.id, userId);
 
-    // Send existing users' IDs AND names to the newly connected user
+    // Send existing users' info to the new user
     const existingUsers = Object.keys(activeRooms[roomId])
       .filter((id) => id !== socket.id)
-      .map((id) => ({ id: id, name: activeRooms[roomId][id].userId })); // Send object with id and name
+      .map((id) => ({
+        id: id,
+        name: activeRooms[roomId][id].userId,
+        status: activeRooms[roomId][id].status,
+      }));
     socket.emit("existing-users", existingUsers);
 
     console.log(`User ${userId} (${socket.id}) joined room ${roomId}`);
-    console.log("Current room members in room", roomId, ":", activeRooms[roomId]);
+    console.log("Current room members:", activeRooms[roomId]);
 
-    // Handle incoming chat messages
-    socket.on("chat-message", (messageData) => {
-      const { message } = messageData;
-      // Get the display name of the sender from activeRooms
-      // Need to find the room first since the socket might be in multiple rooms if not handled carefully
-      // For this setup, a socket only joins one room, so we can iterate or use socket.rooms
-      let currentRoomId = null;
-      for (const room of socket.rooms) {
-          if (room !== socket.id) { // Exclude the default room which is the socket ID
-              currentRoomId = room;
-              break;
-          }
-      }
-
-      if (currentRoomId && activeRooms[currentRoomId]) {
-          const senderName = activeRooms[currentRoomId][socket.id]?.userId || "Unknown User";
-          io.to(currentRoomId).emit("chat-message", {
-            message: message,
-            userId: senderName, // Use the display name for chat
-          });
-      } else {
-          console.warn(`Chat message received from socket ${socket.id} not associated with a known room.`);
+    // Handle user status updates (e.g., mic or camera toggled)
+    socket.on("update-status", (status) => {
+      if (activeRooms[roomId][socket.id]) {
+        activeRooms[roomId][socket.id].status = status;
+        socket.to(roomId).emit("user-status-updated", socket.id, status);
       }
     });
 
-    // Handle WebRTC signals for specific target users
+    // Handle chat messages
+    socket.on("chat-message", (messageData) => {
+      const { message } = messageData;
+      let currentRoomId = null;
+      for (const room of socket.rooms) {
+        if (room !== socket.id) {
+          currentRoomId = room;
+          break;
+        }
+      }
+
+      if (currentRoomId && activeRooms[currentRoomId]) {
+        const senderName = activeRooms[currentRoomId][socket.id]?.userId || "Unknown User";
+        const sanitizedMessage = sanitizeHtml(message, {
+          allowedTags: [],
+          allowedAttributes: {},
+        });
+        io.to(currentRoomId).emit("chat-message", {
+          message: sanitizedMessage,
+          userId: senderName,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        console.warn(`Chat message from ${socket.id} not associated with a room.`);
+      }
+    });
+
+    // Handle WebRTC signals
     socket.on("signal", (data) => {
       const { targetId, signal } = data;
-      // Forward the signal to the intended recipient, indicating the original sender's socket.id
-      // Ensure targetId is in the same room (though socket.io handles direct emits to specific sockets)
       if (activeRooms[roomId] && activeRooms[roomId][targetId]) {
         io.to(targetId).emit("signal", {
           senderId: socket.id,
           signal: signal,
+          senderName: activeRooms[roomId][socket.id].userId, // Include sender's name
         });
       } else {
-        console.warn(`Signal for unknown targetId ${targetId} in room ${roomId} from ${socket.id}`);
+        console.warn(`Signal for unknown targetId ${targetId} in room ${roomId}`);
       }
     });
 
     socket.on("disconnect", () => {
-      console.log(`Socket ${socket.id} disconnected.`);
-      // Find which room the socket was in and remove them
       for (const room in activeRooms) {
         if (activeRooms[room][socket.id]) {
           const disconnectedUserName = activeRooms[room][socket.id].userId;
           delete activeRooms[room][socket.id];
-          // Notify other users in that room that this user disconnected
-          socket.to(room).emit("user-disconnected", disconnectedUserName || socket.id); // Send name if available
-          console.log(`User ${disconnectedUserName || socket.id} removed from room ${room}`);
+          socket.to(room).emit("user-disconnected", disconnectedUserName);
+          console.log(`User ${disconnectedUserName} removed from room ${room}`);
 
           if (Object.keys(activeRooms[room]).length === 0) {
-            delete activeRooms[room]; // Clean up empty rooms
-            console.log(`Room ${room} is now empty and deleted.`);
+            delete activeRooms[room];
+            console.log(`Room ${room} is empty and deleted.`);
           }
-          break; // User can only be in one room in this simple setup
+          break;
         }
       }
     });
 
-    // Handle explicit disconnect from call button
     socket.on("disconnect-call", () => {
-      // This event comes from the client when they click "Leave Call"
-      // It's similar to a disconnect but can be handled explicitly for UI feedback.
-      socket.disconnect(true); // Force a full disconnect, which will trigger the 'disconnect' event above
+      socket.disconnect(true);
     });
 
-    // "end-call" event could be used to signify that the room should be dissolved
-    // For a group call, this might not be needed unless one user "ends" it for everyone.
-    // In a mesh, individual users just leave.
-    socket.on("end-call", (roomId) => { // This roomId will be from the client, ensure it's valid
-      io.in(roomId).emit("call-ended"); // send to everyone in the room
+    socket.on("end-call", (roomId) => {
+      io.in(roomId).emit("call-ended");
       if (activeRooms[roomId]) {
-        delete activeRooms[roomId]; // Remove the room from active rooms
-        console.log(`Room ${roomId} has been ended by a user.`);
+        delete activeRooms[roomId];
+        console.log(`Room ${roomId} ended.`);
       }
     });
   });
