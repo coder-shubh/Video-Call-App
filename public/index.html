@@ -15,7 +15,70 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
     <style>
-      /* (Keep existing styles, with the following additions) */
+      body {
+        font-family: "Google Sans", "Roboto", sans-serif;
+        background-color: #202124;
+        color: #e8eaed;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        box-sizing: border-box;
+      }
+
+      .container {
+        background-color: #2f3032;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        max-width: 1200px; /* Max width for the main container */
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      h1 {
+        color: #8ab4f8;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      #roomInfo {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        font-size: 16px;
+        background-color: #3c4043;
+        padding: 10px 20px;
+        border-radius: 8px;
+      }
+
+      #roomInfo strong {
+        color: #8ab4f8;
+      }
+
+      .copy-room-id {
+        background-color: #8ab4f8;
+        color: #202124;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.2s ease;
+      }
+
+      .copy-room-id:hover {
+        background-color: #a0c3ff;
+      }
+
+      /* Participants List */
       .participants-list {
         margin: 10px 0;
         padding: 10px;
@@ -26,6 +89,7 @@
         width: 100%;
         color: #e8eaed;
         font-size: 14px;
+        border: 1px solid #424242;
       }
 
       .participant {
@@ -33,6 +97,7 @@
         align-items: center;
         gap: 8px;
         margin-bottom: 5px;
+        padding: 3px 0;
       }
 
       .participant .status-icon {
@@ -45,32 +110,277 @@
       .participant .video-on { color: #4CAF50; }
       .participant .video-off { color: #ea4335; }
 
-      .copy-room-id {
-        background-color: #8ab4f8;
-        color: #202124;
-        padding: 8px 16px;
-        margin-left: 10px;
-        border-radius: 20px;
+      /* Video Container for Group View */
+      #videoContainer {
+        display: grid; /* Use CSS Grid for flexible layout */
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsive columns */
+        gap: 15px; /* Space between video wrappers */
+        padding: 20px;
+        background-color: #202124;
+        border-radius: 8px;
+        margin-top: 20px;
+        justify-content: center; /* Center items in the grid */
+        align-items: center; /* Center items vertically */
+        max-height: calc(100vh - 350px); /* Adjust based on other elements */
+        overflow-y: auto; /* Enable scrolling if too many videos */
+        border: 1px solid #424242;
       }
 
-      .copy-room-id:hover {
-        background-color: #a0c3ff;
+      .video-wrapper {
+        position: relative;
+        background-color: #3c4043;
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%; /* Ensure wrappers take up grid space */
+        padding-top: 56.25%; /* 16:9 aspect ratio (height / width * 100%) */
+        height: 0; /* Important for aspect ratio trick */
+      }
+
+      .video-wrapper video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* Keep video aspect ratio and fit within bounds */
+        border-radius: 8px;
+      }
+
+      .user-id-label {
+        position: absolute;
+        bottom: 5px;
+        left: 5px;
+        background-color: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-size: 12px;
+        z-index: 10;
+      }
+
+      .fullscreen-icon-container {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        z-index: 10;
+        cursor: pointer;
+      }
+
+      .fullscreen-icon-container i {
+        color: white;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 5px;
+        border-radius: 50%;
+      }
+
+      .fullscreen-icon-container i:hover {
+        background-color: rgba(0, 0, 0, 0.8);
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .controls button {
+        background-color: #3c4043;
+        color: #e8eaed;
+        border: none;
+        border-radius: 25px;
+        padding: 12px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.2s ease, transform 0.1s ease;
+      }
+
+      .controls button:hover {
+        background-color: #5f6368;
+        transform: translateY(-2px);
+      }
+
+      .controls button.active {
+        background-color: #4CAF50; /* Green for active mic/video */
+      }
+
+      #disconnect {
+        background-color: #ea4335; /* Red for disconnect */
+      }
+
+      #disconnect:hover {
+        background-color: #e02f23;
+      }
+
+      .callStatus {
+        text-align: center;
+        margin-top: 15px;
+        color: #fbbc04; /* Yellow for warnings/status */
+        font-size: 14px;
+      }
+
+      .chat-container {
+        background-color: #3c4043;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+        height: 300px; /* Fixed height for chat */
+        border: 1px solid #424242;
+      }
+
+      .chat-messages {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding-right: 10px; /* For scrollbar spacing */
+        margin-bottom: 10px;
       }
 
       .chat-messages div {
-        display: flex;
-        flex-direction: column;
+        margin-bottom: 8px;
+      }
+
+      .chat-message {
+        background-color: #424242;
+        padding: 8px 12px;
+        border-radius: 15px;
+        max-width: 80%;
+        word-wrap: break-word;
+      }
+
+      .self-message {
+        background-color: #8ab4f8;
+        color: #202124;
+        align-self: flex-end;
+        margin-left: auto;
+      }
+
+      .remote-message {
+        background-color: #5f6368;
+        color: #e8eaed;
+        align-self: flex-start;
       }
 
       .chat-timestamp {
-        font-size: 12px;
+        font-size: 10px;
         color: #9aa0a6;
         margin-top: 2px;
+        text-align: right;
       }
 
+      .self-message .chat-timestamp {
+        text-align: right;
+      }
+
+      .remote-message .chat-timestamp {
+        text-align: left;
+      }
+
+
+      .chat-input-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .chat-input {
+        flex-grow: 1;
+        padding: 10px 15px;
+        border-radius: 20px;
+        border: 1px solid #5f6368;
+        background-color: #202124;
+        color: #e8eaed;
+        font-size: 16px;
+      }
+
+      .chat-input::placeholder {
+        color: #9aa0a6;
+      }
+
+      .chat-send-button {
+        background-color: #8ab4f8;
+        color: #202124;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 20px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.2s ease;
+      }
+
+      .chat-send-button:hover {
+        background-color: #a0c3ff;
+      }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #3c4043;
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #5f6368;
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #7a7a7a;
+      }
+
+      /* Responsive adjustments */
       @media (max-width: 768px) {
+        .container {
+          padding: 15px;
+          margin: 10px;
+        }
+
+        #roomInfo {
+          flex-direction: column;
+          gap: 10px;
+          font-size: 14px;
+        }
+
+        .copy-room-id {
+          margin-left: 0;
+          width: 100%;
+          text-align: center;
+        }
+
         .participants-list {
           max-height: 80px;
+        }
+
+        #videoContainer {
+          grid-template-columns: 1fr; /* Stack videos vertically on small screens */
+          max-height: calc(100vh - 250px);
+        }
+
+        .controls {
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .controls button {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .chat-container {
+          height: 250px;
         }
       }
     </style>
@@ -85,10 +395,11 @@
         <span>Your ID: <strong id="myUserIdDisplay"></strong></span>
       </div>
 
-      <div class="participants-list" id="participantsList"></div>
+      <div class="participants-list" id="participantsList">
+        </div>
 
       <div id="videoContainer" class="fullscreen-container">
-        <div class="video-wrapper">
+        <div class="video-wrapper" id="wrapper-localVideo">
           <video id="localVideo" autoplay muted playsinline></video>
           <div class="user-id-label">You</div>
           <div class="fullscreen-icon-container">
@@ -96,13 +407,14 @@
             <i class="fas fa-compress" data-target="localVideo" style="display: none" title="Exit Full Screen"></i>
           </div>
         </div>
-      </div>
+        </div>
 
       <div class="controls">
         <button id="toggleVideo"><i class="fas fa-video"></i> Turn Camera Off</button>
         <button id="toggleAudio"><i class="fas fa-microphone"></i> Mute</button>
         <button id="shareScreen"><i class="fas fa-desktop"></i> Share Screen</button>
         <button id="disconnect"><i class="fas fa-phone-slash"></i> Leave Call</button>
+        <button id="endCallForEveryone"><i class="fas fa-handshake-slash"></i> End Call for Everyone</button>
       </div>
 
       <div class="callStatus" id="callStatus"></div>
@@ -134,38 +446,48 @@
       const myUserIdDisplay = document.getElementById("myUserIdDisplay");
       const copyRoomIdBtn = document.getElementById("copyRoomId");
       const participantsList = document.getElementById("participantsList");
+      const endCallForEveryoneBtn = document.getElementById("endCallForEveryone");
+
 
       let localStream;
+      // peerConnections will store RTCPeerConnection objects, mapped by remote user's socket ID
       const peerConnections = {};
       let roomId;
-      let myUserId;
+      let myUserId; // The user-chosen ID (e.g., 'Alice')
+      let mySocketId; // The actual socket.id assigned by Socket.IO
       let screenStream;
       let isScreenSharing = false;
 
+      // WebRTC ICE Servers (STUN servers for NAT traversal)
       const configuration = {
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
           { urls: "stun:stun1.l.google.com:19302" },
+          // You can add more STUN or TURN servers here for better reliability
         ],
       };
 
+      // Helper to get local video track
       function getLocalVideoTrack() {
         return localStream ? localStream.getVideoTracks()[0] : null;
       }
 
+      // Helper to get local audio track
       function getLocalAudioTrack() {
         return localStream ? localStream.getAudioTracks()[0] : null;
       }
 
+      // Initialize media (camera and microphone)
       async function initMedia() {
         try {
           const constraints = {
-            video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            video: { width: { ideal: 1280 }, height: { ideal: 720 } }, // High definition video
             audio: true,
           };
           localStream = await navigator.mediaDevices.getUserMedia(constraints);
           localVideo.srcObject = localStream;
 
+          // Set initial button states based on stream availability
           if (getLocalVideoTrack()?.enabled) {
             toggleVideoBtn.classList.add("active");
             toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
@@ -175,48 +497,74 @@
             toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
           }
 
-          // Broadcast initial status
-          broadcastUserStatus();
+          // Important: After media is ready, join the room and broadcast initial status
+          joinRoomAndBroadcastStatus();
+
         } catch (e) {
           callStatus.textContent = "Error accessing camera or microphone. Please check permissions.";
           console.error("Error initializing media:", e);
+          // Still attempt to join the room even without media, though video will be missing
+          joinRoomAndBroadcastStatus();
         }
       }
 
+      // Function to prompt for room/user ID and emit join-room
+      function joinRoomAndBroadcastStatus() {
+        // Prompt for room and user ID
+        roomId = prompt("Enter room ID to join or create:");
+        if (!roomId) {
+          roomId = "default-room-" + Math.random().toString(36).substring(2, 9);
+          alert("No room ID entered. Joining a random room: " + roomId);
+        }
+        myUserId = prompt("Enter your user ID (e.g., 'Alice', 'Bob'):");
+        if (!myUserId) {
+          myUserId = "user-" + Math.random().toString(36).substring(2, 6);
+          alert("No user ID entered. Using random ID: " + myUserId);
+        }
+
+        roomIdDisplay.textContent = roomId;
+        myUserIdDisplay.textContent = myUserId;
+
+        // Store own socket ID once connected
+        socket.on('connect', () => {
+          mySocketId = socket.id;
+          console.log("My socket ID:", mySocketId);
+          socket.emit("join-room", roomId, myUserId);
+          // Broadcast initial status after joining the room
+          broadcastUserStatus();
+        });
+      }
+
+
+      // Initialize media on page load
       initMedia();
-
-      // Prompt for room and user ID
-      roomId = prompt("Enter room ID to join or create:");
-      if (!roomId) {
-        roomId = "default-room-" + Math.random().toString(36).substring(2, 9);
-        alert("No room ID entered. Joining a random room: " + roomId);
-      }
-      myUserId = prompt("Enter your user ID (e.g., 'Alice', 'Bob'):");
-      if (!myUserId) {
-        myUserId = "user-" + Math.random().toString(36).substring(2, 6);
-        alert("No user ID entered. Using random ID: " + myUserId);
-      }
-
-      roomIdDisplay.textContent = roomId;
-      myUserIdDisplay.textContent = myUserId;
-      socket.emit("join-room", roomId, myUserId);
 
       // Copy Room ID to clipboard
       copyRoomIdBtn.onclick = () => {
         navigator.clipboard.writeText(roomId).then(() => {
           callStatus.textContent = "Room ID copied to clipboard!";
           setTimeout(() => (callStatus.textContent = ""), 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            callStatus.textContent = "Failed to copy Room ID.";
         });
       };
 
-      // Update participants list
+      // Function to update the participants list in the UI
       function updateParticipantsList(users) {
-        participantsList.innerHTML = "";
-        users.forEach(({ id, name, status }) => {
+        participantsList.innerHTML = ""; // Clear existing list
+        const sortedUsers = [...users].sort((a, b) => {
+          if (a.id === mySocketId) return -1; // "You" always first
+          if (b.id === mySocketId) return 1;
+          return a.name.localeCompare(b.name); // Then sort by name
+        });
+
+        sortedUsers.forEach(({ id, name, status }) => {
           const participantDiv = document.createElement("div");
           participantDiv.className = "participant";
+          const displayId = id === mySocketId ? "You" : name;
           participantDiv.innerHTML = `
-            <span>${name}</span>
+            <span>${displayId}</span>
             <i class="fas fa-microphone${status.audio ? "" : "-slash"} status-icon ${status.audio ? "mic-on" : "mic-off"}"></i>
             <i class="fas fa-video${status.video ? "" : "-slash"} status-icon ${status.video ? "video-on" : "video-off"}"></i>
           `;
@@ -224,44 +572,82 @@
         });
       }
 
-      socket.on("user-connected", (newUserId, newUserName) => {
+      // Socket.IO Events
+
+      socket.on("user-connected", (newSocketId, newUserName) => {
         callStatus.textContent = `User ${newUserName} connected.`;
-        callUser(newUserId, newUserName);
+        // Create a new peer connection for the new user and initiate a call
+        callUser(newSocketId, newUserName);
+
+        // Update participants list to include the new user
+        const currentParticipants = Array.from(participantsList.querySelectorAll(".participant")).map(el => ({
+          id: el.textContent.includes("You") ? mySocketId : el.textContent.split(':')[0], // Extract socketId or just 'You'
+          name: el.textContent.includes("You") ? myUserId : el.textContent.split(':')[0].replace('User ', ''), // Extract name
+          // Placeholder status, will be updated by 'user-status-updated'
+          status: { audio: el.querySelector('.mic-on, .mic-off').classList.contains('mic-on'), video: el.querySelector('.video-on, .video-off').classList.contains('video-on') }
+        }));
+        currentParticipants.push({ id: newSocketId, name: newUserName, status: { audio: true, video: true } }); // Assume default true initially
+        updateParticipantsList(currentParticipants);
       });
 
       socket.on("existing-users", (existingUserIdsAndNames) => {
-        updateParticipantsList([
-          { id: socket.id, name: myUserId, status: { audio: getLocalAudioTrack()?.enabled, video: getLocalVideoTrack()?.enabled } },
+        // Build initial participants list including self and existing users
+        const allUsers = [
+          { id: mySocketId, name: myUserId, status: { audio: getLocalAudioTrack()?.enabled ?? false, video: getLocalVideoTrack()?.enabled ?? false } },
           ...existingUserIdsAndNames,
-        ]);
+        ];
+        updateParticipantsList(allUsers);
+
+        // For each existing user, establish a peer connection
         existingUserIdsAndNames.forEach(({ id, name }) => {
           callUser(id, name);
         });
       });
 
       socket.on("user-status-updated", (userId, status) => {
-        // Update participant status in the UI
-        const users = Array.from(participantsList.querySelectorAll(".participant")).map((el) => {
-          const name = el.querySelector("span").textContent;
-          return { id: name === myUserId ? socket.id : userId, name, status: name === myUserId ? { audio: getLocalAudioTrack()?.enabled, video: getLocalVideoTrack()?.enabled } : status };
+        // Find the participant in the list and update their status icons
+        const participantDivs = participantsList.querySelectorAll(".participant");
+        participantDivs.forEach(div => {
+          // Check if the user ID matches (either myUserId for local or the remote user's name for remote)
+          // This is a bit tricky since the participant list shows 'You' instead of myUserId, and for others, it's their name
+          const displayedName = div.querySelector('span').textContent;
+          const isMe = displayedName === "You";
+          const isRemoteUser = displayedName === userId; // userId from server is the actual username
+
+          if ((isMe && userId === mySocketId) || isRemoteUser) { // Match based on displayed name or actual userId
+            const micIcon = div.querySelector('.fa-microphone, .fa-microphone-slash');
+            const videoIcon = div.querySelector('.fa-video, .fa-video-slash');
+
+            if (micIcon) {
+              micIcon.className = `fas ${status.audio ? "fa-microphone mic-on" : "fa-microphone-slash mic-off"} status-icon`;
+            }
+            if (videoIcon) {
+              videoIcon.className = `fas ${status.video ? "fa-video video-on" : "fa-video-slash video-off"} status-icon`;
+            }
+          }
         });
-        updateParticipantsList(users);
       });
 
+
       socket.on("signal", async ({ senderId, signal, senderName }) => {
+        // If we don't have a peer connection for this sender, create one
         if (!peerConnections[senderId]) {
           createPeerConnection(senderId, senderName);
         }
         const pc = peerConnections[senderId];
         try {
           if (signal.type === "offer") {
+            // Set the remote offer and create an answer
             await pc.setRemoteDescription(new RTCSessionDescription(signal));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
+            // Send the answer back to the sender
             socket.emit("signal", { targetId: senderId, signal: pc.localDescription });
           } else if (signal.type === "answer") {
+            // Set the remote answer
             await pc.setRemoteDescription(new RTCSessionDescription(signal));
           } else if (signal.candidate) {
+            // Add ICE candidate
             await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
           }
         } catch (e) {
@@ -269,17 +655,27 @@
         }
       });
 
-      socket.on("user-disconnected", (userId) => {
-        callStatus.textContent = `User ${userId} disconnected.`;
-        removePeerConnection(userId);
-        updateParticipantsList(
-          Array.from(participantsList.querySelectorAll(".participant"))
-            .map((el) => {
-              const name = el.querySelector("span").textContent;
-              return { id: name === myUserId ? socket.id : "", name, status: name === myUserId ? { audio: getLocalAudioTrack()?.enabled, video: getLocalVideoTrack()?.enabled } : {} };
-            })
-            .filter((user) => user.name !== userId)
-        );
+      socket.on("user-disconnected", (disconnectedUserName, disconnectedSocketId) => {
+        callStatus.textContent = `User ${disconnectedUserName} disconnected.`;
+        removePeerConnection(disconnectedSocketId); // Remove the peer connection and video element
+
+        // Filter out the disconnected user from the participants list and re-render
+        const currentParticipants = Array.from(participantsList.querySelectorAll(".participant"))
+          .map(el => {
+            // Reconstruct a temporary user object from the UI for filtering
+            const name = el.querySelector("span").textContent;
+            return {
+              id: name === "You" ? mySocketId : "", // Simplistic, will be filled by actual socket IDs later
+              name: name === "You" ? myUserId : name,
+              status: {
+                audio: el.querySelector('.mic-on') ? true : false,
+                video: el.querySelector('.video-on') ? true : false
+              }
+            };
+          })
+          .filter((user) => user.name !== disconnectedUserName); // Filter by their display name
+
+        updateParticipantsList(currentParticipants);
       });
 
       socket.on("call-ended", () => {
@@ -291,28 +687,38 @@
         callStatus.textContent = message;
       });
 
+      // WebRTC Functions
+
+      // Creates a new RTCPeerConnection for a remote user
       function createPeerConnection(remoteSocketId, remoteUserName) {
-        if (peerConnections[remoteSocketId]) return peerConnections[remoteSocketId];
+        // If a connection already exists for this remote user, return it
+        if (peerConnections[remoteSocketId]) {
+          return peerConnections[remoteSocketId];
+        }
 
         const pc = new RTCPeerConnection(configuration);
 
+        // Send ICE candidates to the remote peer
         pc.onicecandidate = (event) => {
           if (event.candidate) {
             socket.emit("signal", { targetId: remoteSocketId, signal: { candidate: event.candidate } });
           }
         };
 
+        // When remote stream tracks are received, add them to a new video element
         pc.ontrack = (event) => {
+          // Check if a video element for this remote user already exists
           let remoteVideo = document.getElementById(`video-${remoteSocketId}`);
           if (!remoteVideo) {
+            // Create a wrapper div for consistent styling and user label
             const videoWrapper = document.createElement("div");
             videoWrapper.className = "video-wrapper";
-            videoWrapper.id = `wrapper-${remoteSocketId}`;
+            videoWrapper.id = `wrapper-${remoteSocketId}`; // Unique ID for the wrapper
 
             remoteVideo = document.createElement("video");
-            remoteVideo.id = `video-${remoteSocketId}`;
+            remoteVideo.id = `video-${remoteSocketId}`; // Unique ID for the video element
             remoteVideo.autoplay = true;
-            remoteVideo.playsInline = true;
+            remoteVideo.playsInline = true; // Required for iOS
 
             const userIdLabel = document.createElement("div");
             userIdLabel.className = "user-id-label";
@@ -324,43 +730,56 @@
               <i class="fas fa-expand" data-target="video-${remoteSocketId}" title="Go Full Screen"></i>
               <i class="fas fa-compress" data-target="video-${remoteSocketId}" style="display: none" title="Exit Full Screen"></i>
             `;
-            addFullscreenListeners(fullscreenIconContainer);
+            addFullscreenListeners(fullscreenIconContainer); // Attach fullscreen events
 
             videoWrapper.appendChild(remoteVideo);
             videoWrapper.appendChild(userIdLabel);
             videoWrapper.appendChild(fullscreenIconContainer);
-            videoContainer.appendChild(videoWrapper);
+            videoContainer.appendChild(videoWrapper); // Add to the main video container
           }
+          // Set the received stream as the source for the remote video element
           remoteVideo.srcObject = event.streams[0];
           callStatus.textContent = `Connected with ${remoteUserName}!`;
         };
 
+        // Handle ICE connection state changes (e.g., disconnected, failed, connected)
         pc.oniceconnectionstatechange = () => {
+          console.log(`ICE connection state for ${remoteUserName} (${remoteSocketId}): ${pc.iceConnectionState}`);
           if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
             callStatus.textContent = `Connection to ${remoteUserName} lost. Attempting to reconnect...`;
-            removePeerConnection(remoteSocketId);
-            callUser(remoteSocketId, remoteUserName);
+            // You could implement a reconnect logic here, or just remove for now
+            // removePeerConnection(remoteSocketId);
+          } else if (pc.iceConnectionState === "connected") {
+            callStatus.textContent = `Connection with ${remoteUserName} established.`;
           }
         };
 
+        // Add local stream tracks to the peer connection
         if (localStream) {
           localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
-          if (isScreenSharing && screenStream) {
-            screenStream.getTracks().forEach((track) => pc.addTrack(track, screenStream));
-          }
+        }
+        // If screen sharing is active, add screen tracks as well
+        if (isScreenSharing && screenStream) {
+          screenStream.getTracks().forEach((track) => pc.addTrack(track, screenStream));
         }
 
-        peerConnections[remoteSocketId] = pc;
+        peerConnections[remoteSocketId] = pc; // Store the peer connection
         return pc;
       }
 
+      // Initiates a call to a specific remote user
       async function callUser(remoteSocketId, remoteUserName) {
-        if (remoteSocketId === socket.id) return;
+        // Don't try to call self
+        if (remoteSocketId === mySocketId) return;
+
+        // If a peer connection already exists, don't re-create
         if (!peerConnections[remoteSocketId]) {
           const pc = createPeerConnection(remoteSocketId, remoteUserName);
           try {
+            // Create an offer and set it as local description
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
+            // Send the offer to the remote peer via the signaling server
             socket.emit("signal", { targetId: remoteSocketId, signal: pc.localDescription });
           } catch (e) {
             console.error(`Error calling user ${remoteSocketId}:`, e);
@@ -368,36 +787,44 @@
         }
       }
 
+      // Closes and removes a peer connection and its associated video element
       function removePeerConnection(remoteSocketId) {
         if (peerConnections[remoteSocketId]) {
           peerConnections[remoteSocketId].close();
           delete peerConnections[remoteSocketId];
         }
         const videoWrapper = document.getElementById(`wrapper-${remoteSocketId}`);
-        if (videoWrapper) videoContainer.removeChild(videoWrapper);
+        if (videoWrapper) {
+          videoContainer.removeChild(videoWrapper);
+        }
       }
 
+      // Fullscreen functionality
       function addFullscreenListeners(container) {
         const expandBtn = container.querySelector(".fa-expand");
         const compressBtn = container.querySelector(".fa-compress");
         const videoId = expandBtn.dataset.target;
         const videoElement = document.getElementById(videoId);
 
-        expandBtn.addEventListener("click", () => {
-          if (videoElement) enterFullScreen(videoElement);
-        });
-
-        compressBtn.addEventListener("click", () => {
-          exitFullScreen();
-        });
+        if (expandBtn) {
+          expandBtn.addEventListener("click", () => {
+            if (videoElement) enterFullScreen(videoElement);
+          });
+        }
+        if (compressBtn) {
+          compressBtn.addEventListener("click", () => {
+            exitFullScreen();
+          });
+        }
       }
 
       function enterFullScreen(videoElement) {
         if (videoElement.requestFullscreen) videoElement.requestFullscreen();
-        else if (videoElement.mozRequestFullScreen) videoElement.mozRequestFullScreen();
-        else if (videoElement.webkitRequestFullscreen) videoElement.webkitRequestFullscreen();
-        else if (videoElement.msRequestFullscreen) videoElement.msRequestТаким
+        else if (videoElement.mozRequestFullScreen) videoElement.mozRequestFullScreen(); // Firefox
+        else if (videoElement.webkitRequestFullscreen) videoElement.webkitRequestFullscreen(); // Chrome, Safari, Opera
+        else if (videoElement.msRequestFullscreen) videoElement.msRequestFullscreen(); // IE/Edge
       }
+
       function exitFullScreen() {
         if (document.exitFullscreen) document.exitFullscreen();
         else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
@@ -405,6 +832,7 @@
         else if (document.msExitFullscreen) document.msExitFullscreen();
       }
 
+      // Listen for fullscreen change events to toggle icons
       document.addEventListener('fullscreenchange', handleFullscreenChange);
       document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.addEventListener('mozfullscreenchange', handleFullscreenChange);
@@ -434,6 +862,9 @@
         });
       }
 
+      // Control Buttons Logic
+
+      // Broadcasts local user's audio/video status to others in the room
       function broadcastUserStatus() {
         socket.emit("update-status", {
           audio: getLocalAudioTrack()?.enabled ?? false,
@@ -443,54 +874,84 @@
 
       toggleVideoBtn.onclick = () => {
         const videoTrack = getLocalVideoTrack();
-        if (!videoTrack) return;
+        if (!videoTrack) {
+          console.warn("No local video track found.");
+          return;
+        }
 
-        videoTrack.enabled = !videoTrack.enabled;
-        toggleVideoBtn.classList.toggle('active');
+        videoTrack.enabled = !videoTrack.enabled; // Toggle video on/off
+        toggleVideoBtn.classList.toggle('active', videoTrack.enabled);
         toggleVideoBtn.innerHTML = videoTrack.enabled
           ? '<i class="fas fa-video"></i> Turn Camera Off'
           : '<i class="fas fa-video-slash"></i> Turn Camera On';
-        broadcastUserStatus();
+        broadcastUserStatus(); // Inform others about the status change
       };
 
       toggleAudioBtn.onclick = () => {
         const audioTrack = getLocalAudioTrack();
-        if (!audioTrack) return;
+        if (!audioTrack) {
+          console.warn("No local audio track found.");
+          return;
+        }
 
-        audioTrack.enabled = !audioTrack.enabled;
-        toggleAudioBtn.classList.toggle('active');
+        audioTrack.enabled = !audioTrack.enabled; // Toggle audio on/off
+        toggleAudioBtn.classList.toggle('active', audioTrack.enabled);
         toggleAudioBtn.innerHTML = audioTrack.enabled
           ? '<i class="fas fa-microphone"></i> Mute'
           : '<i class="fas fa-microphone-slash"></i> Unmute';
-        broadcastUserStatus();
+        broadcastUserStatus(); // Inform others about the status change
       };
 
+      // Disconnect from the current call (leaves the room)
       disconnectBtn.onclick = () => {
         socket.emit("disconnect-call");
-        endCall();
+        endCall(); // Clean up local media and peer connections
       };
 
+      // Ends the call for all participants in the room (host-like functionality)
+      endCallForEveryoneBtn.onclick = () => {
+          const confirmEnd = confirm("Are you sure you want to end the call for everyone in this room?");
+          if (confirmEnd) {
+              socket.emit("end-call", roomId);
+          }
+      };
+
+
+      // Function to clean up all media and peer connections locally
       function endCall() {
+        // Stop local media tracks
         if (localStream) {
           localStream.getTracks().forEach((track) => track.stop());
           localVideo.srcObject = null;
         }
+        // Stop screen sharing if active
         if (screenStream) {
           screenStream.getTracks().forEach((track) => track.stop());
           screenStream = null;
         }
 
+        // Close all peer connections
         for (const remoteSocketId in peerConnections) {
-          peerConnections[remoteSocketId].close();
-          delete peerConnections[remoteSocketId];
+          if (peerConnections[remoteSocketId]) {
+            peerConnections[remoteSocketId].close();
+            delete peerConnections[remoteSocketId];
+          }
         }
 
-        document.querySelectorAll('.video-wrapper:not(:first-child)').forEach((el) => el.remove());
+        // Remove all remote video elements from the DOM
+        document.querySelectorAll('.video-wrapper:not(#wrapper-localVideo)').forEach((el) => el.remove());
+        // Clear participants list except for self
+        updateParticipantsList([{ id: mySocketId, name: myUserId, status: { audio: false, video: false } }]);
+
+
         callStatus.textContent = "Call Disconnected";
+        // Reset button states (important for rejoining a call)
         toggleAudioBtn.disabled = false;
         toggleVideoBtn.disabled = false;
         shareScreenBtn.disabled = false;
         disconnectBtn.disabled = false;
+        endCallForEveryoneBtn.disabled = false;
+
 
         toggleVideoBtn.classList.remove('active');
         toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
@@ -498,8 +959,10 @@
         toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
         shareScreenBtn.classList.remove('active');
         shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
+        isScreenSharing = false; // Reset screen sharing flag
       }
 
+      // Screen Sharing Logic
       shareScreenBtn.onclick = async () => {
         if (isScreenSharing) {
           stopScreenSharing();
@@ -510,36 +973,58 @@
 
       async function startScreenSharing() {
         try {
+          // Basic check for mobile, getDisplayMedia might not work or behave as expected
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
           if (isMobile) {
-            callStatus.textContent = "Screen sharing is not supported on mobile browsers.";
-            return;
+            callStatus.textContent = "Screen sharing might not be fully supported on mobile browsers.";
+            // Continue attempt, but warn
           }
 
-          screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+              cursor: "always", // Show cursor in shared screen
+              width: { ideal: 1920 }, // High resolution for screen sharing
+              height: { ideal: 1080 }
+            },
+            audio: { // Optional: include system audio
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false
+            }
+          });
           const screenTrack = screenStream.getVideoTracks()[0];
 
+          // Event listener for when screen sharing stops (e.g., user clicks "Stop Sharing" in browser UI)
           screenTrack.onended = () => stopScreenSharing();
+
+          // Replace local video stream with screen share
           localVideo.srcObject = screenStream;
           isScreenSharing = true;
           shareScreenBtn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop Sharing';
           shareScreenBtn.classList.add('active');
+          callStatus.textContent = "Screen sharing started.";
 
+          // Replace video tracks for all existing peer connections
           for (const id in peerConnections) {
             const pc = peerConnections[id];
             const videoSender = pc.getSenders().find((sender) => sender.track && sender.track.kind === "video");
             if (videoSender) {
               await videoSender.replaceTrack(screenTrack);
             } else {
+              // If for some reason there's no video sender, add the track
               pc.addTrack(screenTrack, screenStream);
             }
           }
         } catch (err) {
-          callStatus.textContent = err.name === "NotAllowedError"
-            ? "Screen sharing permission denied."
-            : "Could not share screen. Please try again.";
+          if (err.name === "NotAllowedError") {
+            callStatus.textContent = "Screen sharing permission denied. Please allow screen capture.";
+          } else if (err.name === "NotFoundError") {
+            callStatus.textContent = "No screen source found. Please check your system settings.";
+          } else {
+            callStatus.textContent = "Could not share screen. Please try again.";
+          }
           console.error("Error sharing screen:", err);
-          isScreenSharing = false;
+          isScreenSharing = false; // Ensure flag is reset on error
           shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
           shareScreenBtn.classList.remove('active');
         }
@@ -550,11 +1035,14 @@
           screenStream.getTracks().forEach((track) => track.stop());
           screenStream = null;
         }
+        // Revert local video to camera stream
         localVideo.srcObject = localStream;
         isScreenSharing = false;
         shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
         shareScreenBtn.classList.remove('active');
+        callStatus.textContent = "Screen sharing stopped.";
 
+        // Replace video tracks back to camera for all existing peer connections
         const cameraVideoTrack = getLocalVideoTrack();
         if (cameraVideoTrack) {
           for (const id in peerConnections) {
@@ -563,18 +1051,33 @@
             if (videoSender) {
               videoSender.replaceTrack(cameraVideoTrack);
             } else {
+              // This case shouldn't ideally happen if a video track was replaced
               pc.addTrack(cameraVideoTrack, localStream);
             }
           }
+        } else {
+            // If camera was off, ensure remote users see black screen or a placeholder
+            for (const id in peerConnections) {
+                const pc = peerConnections[id];
+                const videoSender = pc.getSenders().find((sender) => sender.track && sender.track.kind === "video");
+                if (videoSender) {
+                    // Replace with a dummy black track or remove it
+                    const dummyTrack = new MediaStreamTrack('video', { mediaType: 'video', kind: 'video' }); // Create a dummy track
+                    videoSender.replaceTrack(dummyTrack);
+                    // Or consider removing the track, but re-adding camera later is harder
+                }
+            }
         }
       }
 
+      // Chat Functionality
       sendMessageButton.onclick = () => {
         if (chatInput.value.trim()) {
           const message = chatInput.value;
           socket.emit("chat-message", { message });
+          // Display the message locally immediately
           displayMessage(message, myUserId, "self-message", new Date().toISOString());
-          chatInput.value = "";
+          chatInput.value = ""; // Clear input field
         }
       };
 
@@ -582,22 +1085,30 @@
         if (event.key === "Enter") sendMessageButton.click();
       });
 
+      // Called when a new chat message is received from the server
       socket.on("chat-message", ({ message, userId, timestamp }) => {
         const messageType = userId === myUserId ? "self-message" : "remote-message";
         displayMessage(message, userId, messageType, timestamp);
       });
 
+      // Helper function to display a chat message in the UI
       function displayMessage(message, userId, type, timestamp) {
         const messageDiv = document.createElement("div");
+        // Apply appropriate classes for styling (self-message or remote-message)
         messageDiv.classList.add("chat-message", type);
-        const formattedTime = new Date(timestamp).toLocaleTimeString();
+        const formattedTime = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); // e.g., 09:30 AM
         messageDiv.innerHTML = `
           <div><strong>${userId}:</strong> ${message}</div>
           <div class="chat-timestamp">${formattedTime}</div>
         `;
         chatMessages.appendChild(messageDiv);
+        // Scroll to the bottom to show the newest message
         chatMessages.scrollTop = chatMessages.scrollHeight;
       }
+
+      // Initial call to add fullscreen listeners for the local video
+      addFullscreenListeners(document.getElementById('wrapper-localVideo').querySelector('.fullscreen-icon-container'));
+
     </script>
   </body>
 </html>
