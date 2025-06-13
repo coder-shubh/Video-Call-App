@@ -23,39 +23,39 @@
       }
 
       body {
-        font-family: 'Google Sans', 'Roboto', Arial, sans-serif; /* Prefer Google fonts */
-        background-color: #1a1a1a; /* Dark background for the entire page */
+        font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+        background-color: #1a1a1a;
         display: flex;
         justify-content: center;
         align-items: center;
         height: 100vh;
-        overflow: hidden; /* Hide scrollbars on body */
-        color: #e8eaed; /* Light text color for contrast */
+        overflow: hidden;
+        color: #e8eaed;
       }
 
       .container {
-        width: 98%; /* Slightly wider container */
-        max-width: 1400px; /* Increased max-width */
+        width: 98%;
+        max-width: 1600px; /* Increased max-width for more horizontal space */
         display: flex;
         flex-direction: column;
         align-items: center;
-        background-color: #202124; /* Darker background for the main content area */
+        background-color: #202124;
         border-radius: 8px;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); /* More pronounced shadow */
-        padding: 20px; /* Add some padding around the container */
-        height: 95vh; /* Take up more vertical space */
-        overflow: hidden; /* Hide container scrollbars, let internal elements handle it */
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        padding: 20px;
+        height: 95vh;
+        overflow: hidden;
       }
 
       h1 {
-        display: none; /* Hide the main title, Google Meet is very minimal */
+        display: none;
       }
 
-      /* Room Info - Positioned more subtly */
+      /* Room Info */
       #roomInfo {
         margin-top: 10px;
         font-size: 14px;
-        color: #9aa0a6; /* Muted grey for room info */
+        color: #9aa0a6;
         text-align: center;
         padding: 5px 15px;
         background-color: #2f3032;
@@ -65,83 +65,95 @@
 
       #roomIdDisplay {
         color: #e8eaed;
-        font-weight: normal; /* Less bold than before */
+        font-weight: normal;
+      }
+
+      /* Main Content Area - New Flex Container */
+      .main-content {
+        display: flex;
+        flex-grow: 1; /* Allow main content to take available vertical space */
+        width: 100%;
+        gap: 20px; /* Space between video and chat */
+        overflow: hidden; /* Prevent horizontal scroll */
       }
 
       /* Video Container */
       #videoContainer {
-        flex-grow: 1; /* Allows video container to take available space */
+        flex-grow: 1; /* Allows video container to take available space on the left */
         display: grid;
-        grid-template-columns: 2fr 1fr; /* Main video larger, local video smaller */
+        grid-template-columns: 1fr; /* Default to single column for now, adjust for side-by-side if needed */
         gap: 15px;
         width: 100%;
-        padding: 0; /* Remove padding here, videos will have their own padding */
-        margin-top: 0;
-        transition: all 0.3s ease-in-out;
-        /* Height will be determined by flex-grow within the container */
-        min-height: 200px; /* Minimum height for video container */
+        min-height: 200px;
+        /* Remove explicit height here, let flex-grow determine it */
+        height: 100%; /* Fill the available height in main-content */
       }
 
       .video-wrapper {
         position: relative;
-        background-color: #000; /* Black background for video areas */
+        background-color: #000;
         border-radius: 8px;
-        overflow: hidden; /* Ensure video corners are rounded */
-        display: flex; /* Use flexbox to center video if aspect ratio differs */
+        overflow: hidden;
+        display: flex;
         justify-content: center;
         align-items: center;
       }
 
-      .video-wrapper:first-child { /* Remote video is typically larger */
-        grid-column: span 1;
-        height: 100%; /* Take full height */
+      .video-wrapper:first-child {
+        /* Main video will occupy the primary spot */
+        height: 100%; /* Fill available height */
       }
 
-      .video-wrapper:last-child { /* Local video is typically smaller */
-        grid-column: span 1;
-        height: 100%;
-        max-height: 180px; /* Limit local video height */
-        align-self: flex-end; /* Align to the bottom right */
+      .video-wrapper:last-child {
+        /* Local video is typically smaller, positioned in a corner or separate */
+        position: absolute; /* Position relative to #videoContainer */
+        bottom: 15px;
+        right: 15px;
+        width: 200px; /* Fixed width for local video */
+        height: 150px; /* Fixed height for local video */
+        z-index: 5; /* Ensure it's above the remote video */
+        border: 2px solid #3c4043; /* Subtle border for local video */
       }
 
       video {
         width: 100%;
-        height: 100%; /* Fill the wrapper */
-        object-fit: cover; /* Cover the area, cropping if necessary */
-        border-radius: 8px; /* Apply border-radius to the video itself */
-        border: none; /* Remove border */
+        height: 100%;
+        object-fit: cover;
+        border-radius: 8px;
+        border: none;
       }
 
       /* Controls Section */
       .controls {
         display: flex;
         justify-content: center;
-        gap: 20px; /* Increased gap between buttons */
-        margin: 20px 0 10px 0; /* Adjust margin to give more space to chat */
+        gap: 20px;
+        margin: 20px 0 10px 0;
         padding: 10px 0;
-        background-color: #2f3032; /* Slightly different background for controls */
+        background-color: #2f3032;
         border-radius: 8px;
         width: 100%;
         box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
+        flex-shrink: 0; /* Prevent controls from shrinking */
       }
 
       button {
-        padding: 10px 18px; /* Adjusted padding for a more compact look */
+        padding: 10px 18px;
         font-size: 15px;
-        color: #e8eaed; /* Light text for buttons */
-        background-color: #3c4043; /* Darker grey for active buttons */
+        color: #e8eaed;
+        background-color: #3c4043;
         border: none;
-        border-radius: 24px; /* Pill-shaped buttons */
+        border-radius: 24px;
         cursor: pointer;
         transition: background-color 0.3s, transform 0.2s;
-        display: flex; /* Allows icon and text alignment */
+        display: flex;
         align-items: center;
-        gap: 8px; /* Space between icon and text if applicable */
+        gap: 8px;
       }
 
       button:hover {
-        background-color: #5f6368; /* Lighter grey on hover */
-        transform: translateY(-2px); /* Slight lift effect */
+        background-color: #5f6368;
+        transform: translateY(-2px);
       }
 
       button:active {
@@ -154,36 +166,34 @@
         cursor: not-allowed;
       }
 
-      /* Specific button styles for mic/camera toggles */
       #toggleAudio:not(.active),
       #toggleVideo:not(.active) {
-        background-color: #ea4335; /* Red for active mute/camera off state (when not active) */
+        background-color: #ea4335;
       }
 
       #toggleAudio.active,
-      #toggleVideo.active { /* Class to add when active (e.g., mic on) */
-        background-color: #3c4043; /* Dark grey when active */
+      #toggleVideo.active {
+        background-color: #3c4043;
       }
 
-      #shareScreen.active { /* Style for when screen sharing is active */
-        background-color: #4CAF50; /* Green color when active */
+      #shareScreen.active {
+        background-color: #4CAF50;
         color: #fff;
       }
 
-
       #disconnect {
-        background-color: #ea4335; /* Red for disconnect button */
+        background-color: #ea4335;
       }
 
       #disconnect:hover {
-        background-color: #d1392c; /* Darker red on hover */
+        background-color: #d1392c;
       }
 
       /* Call Status */
       .callStatus {
         margin-top: 10px;
         font-size: 14px;
-        color: #ea4335; /* Red for warning/disconnected status */
+        color: #ea4335;
         font-weight: normal;
       }
 
@@ -193,169 +203,174 @@
         top: 10px;
         right: 10px;
         display: flex;
-        flex-direction: row; /* Icons in a row */
+        flex-direction: row;
         gap: 8px;
         z-index: 10;
       }
 
       .fullscreen-icon-container i {
-        color: #e8eaed; /* Light color for icons */
-        font-size: 18px; /* Smaller icon size */
+        color: #e8eaed;
+        font-size: 18px;
         cursor: pointer;
-        background-color: rgba(60, 64, 67, 0.7); /* Dark semi-transparent background */
+        background-color: rgba(60, 64, 67, 0.7);
         border-radius: 50%;
-        padding: 8px; /* Larger padding for easier clicking */
+        padding: 8px;
         transition: background-color 0.3s;
       }
 
       .fullscreen-icon-container i:hover {
-        background-color: rgba(95, 99, 104, 0.9); /* Lighter on hover */
+        background-color: rgba(95, 99, 104, 0.9);
       }
 
-      /* Chat UI */
+      /* Chat UI - Now a sidebar */
       .chat-container {
         display: flex;
         flex-direction: column;
-        width: 100%;
-        margin-top: 10px; /* Reduced margin-top to fit better */
-        background-color: #2f3032; /* Match control bar background */
+        width: 350px; /* Fixed width for the chat sidebar */
+        background-color: #2f3032;
         border-radius: 8px;
         padding: 15px;
-        flex-shrink: 0; /* Prevent chat from shrinking too much */
-        max-height: 30vh; /* Allow chat to take up to 30% of viewport height initially */
-        min-height: 120px; /* Minimum height to remain usable */
+        flex-shrink: 0; /* Prevent chat from shrinking */
+        max-height: 100%; /* Fill available height in main-content */
+        overflow: hidden; /* Prevent chat container itself from scrolling */
       }
 
       .chat-messages {
-        flex-grow: 1; /* Allow messages to take available height */
+        flex-grow: 1;
         overflow-y: auto;
         padding: 10px;
-        background-color: #3c4043; /* Darker background for messages */
-        border: none; /* Remove border */
+        background-color: #3c4043;
+        border: none;
         border-radius: 5px;
-        color: #e8eaed; /* Light text for messages */
-        margin-bottom: 10px; /* Space before input */
+        color: #e8eaed;
+        margin-bottom: 10px;
       }
 
       .chat-messages div {
-        margin-bottom: 8px; /* Space between messages */
+        margin-bottom: 8px;
         line-height: 1.4;
-        word-wrap: break-word; /* Ensure long words break */
+        word-wrap: break-word;
       }
 
-      /* Chat message specific styles */
       .chat-message.self-message {
         text-align: right;
-        color: #8ab4f8; /* A different color for self messages */
+        color: #8ab4f8;
       }
       .chat-message.remote-message {
         text-align: left;
         color: #e8eaed;
       }
 
-
       .chat-input-container {
         display: flex;
-        /* margin-top: 15px; Removed, handled by .chat-messages margin-bottom */
         gap: 10px;
-        flex-shrink: 0; /* Prevent input from shrinking */
+        flex-shrink: 0;
       }
 
       .chat-input {
-        flex-grow: 1; /* Allow input to take remaining space */
+        flex-grow: 1;
         padding: 10px 15px;
         font-size: 15px;
         border: none;
-        border-radius: 20px; /* Rounded input field */
-        background-color: #3c4043; /* Dark background for input */
+        border-radius: 20px;
+        background-color: #3c4043;
         color: #e8eaed;
-        outline: none; /* Remove outline on focus */
+        outline: none;
       }
 
       .chat-input::placeholder {
-        color: #9aa0a6; /* Muted placeholder text */
+        color: #9aa0a6;
       }
 
       .chat-send-button {
         padding: 10px 20px;
-        background-color: #8ab4f8; /* Google Meet blue for send button */
-        color: #202124; /* Dark text on blue background */
+        background-color: #8ab4f8;
+        color: #202124;
         font-weight: bold;
         border: none;
         border-radius: 20px;
         cursor: pointer;
         transition: background-color 0.3s;
-        flex-shrink: 0; /* Prevent button from shrinking */
+        flex-shrink: 0;
       }
 
       .chat-send-button:hover {
-        background-color: #a0c3ff; /* Lighter blue on hover */
+        background-color: #a0c3ff;
       }
 
       /* Responsive adjustments */
-      @media (max-width: 768px) {
-        .container {
-            padding: 10px;
-            height: auto; /* Allow container to grow on smaller screens */
-            max-height: 100vh; /* Max height for container */
-            overflow-y: auto; /* Allow scrolling if content overflows */
+      @media (max-width: 1024px) {
+        .main-content {
+          flex-direction: column; /* Stack video and chat vertically on smaller screens */
+          gap: 15px;
         }
 
         #videoContainer {
-          grid-template-columns: 1fr; /* Stack videos on small screens */
-          height: auto; /* Allow height to adjust */
-          min-height: 150px;
+          height: auto; /* Let content determine height */
+          min-height: 300px; /* Ensure video container has a minimum height */
         }
 
-        .video-wrapper:first-child,
         .video-wrapper:last-child {
-          grid-column: span 1;
-          height: 200px; /* Fixed height for videos on mobile */
-          max-height: unset; /* Remove max-height constraint */
-          align-self: auto; /* Reset align-self */
-        }
-
-        .controls {
-          flex-direction: column; /* Stack controls vertically */
-          gap: 10px;
-          padding: 10px;
-          margin: 15px 0 10px 0; /* Adjust margins */
-        }
-
-        button {
-          width: 100%; /* Full width buttons */
+          position: static; /* Reset absolute positioning for local video */
+          width: 100%; /* Take full width on small screens */
+          height: 200px; /* Give it a fixed height */
         }
 
         .chat-container {
-            margin-top: 10px;
-            max-height: 250px; /* Fixed max height for chat on small screens */
+          width: 100%; /* Chat takes full width when stacked */
+          max-height: 300px; /* Limit chat height when stacked */
+          min-height: 150px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 10px;
+          height: auto;
+          max-height: 100vh;
+          overflow-y: auto;
+        }
+
+        .controls {
+          flex-direction: column;
+          gap: 10px;
+          padding: 10px;
+          margin: 15px 0 10px 0;
+        }
+
+        button {
+          width: 100%;
+        }
+
+        .chat-container {
+            max-height: 250px;
             min-height: 100px;
         }
 
         .chat-messages {
-            min-height: 80px; /* Ensure chat messages have a minimum height */
+            min-height: 80px;
         }
       }
 
-       /* Add a subtle scrollbar style for chat messages */
-       .chat-messages::-webkit-scrollbar {
+      /* Add a subtle scrollbar style for chat messages */
+      .chat-messages::-webkit-scrollbar {
         width: 8px;
         border-radius: 4px;
-       }
+      }
 
-       .chat-messages::-webkit-scrollbar-track {
+      .chat-messages::-webkit-scrollbar-track {
         background: #2f3032;
         border-radius: 4px;
-       }
+      }
 
-       .chat-messages::-webkit-scrollbar-thumb {
+      .chat-messages::-webkit-scrollbar-thumb {
         background-color: #5f6368;
         border-radius: 4px;
-       }
+      }
 
-       .chat-messages::-webkit-scrollbar-thumb:hover {
+      .chat-messages::-webkit-scrollbar-thumb:hover {
         background-color: #7a7d80;
-       }
+      }
     </style>
   </head>
   <body>
@@ -366,37 +381,52 @@
         <span>Room ID: <strong id="roomIdDisplay"></strong></span>
       </div>
 
-      <div id="videoContainer" class="fullscreen-container">
-        <div class="video-wrapper">
-          <video id="localVideo" autoplay muted playsinline></video>
-          <div class="fullscreen-icon-container">
-            <i
-              class="fas fa-expand"
-              id="localFullscreenBtn"
-              title="Go Full Screen"
-            ></i>
-            <i
-              class="fas fa-compress"
-              id="localExitFullscreenBtn"
-              title="Exit Full Screen"
-              style="display: none"
-            ></i>
+      <div class="main-content">
+        <div id="videoContainer" class="fullscreen-container">
+          <div class="video-wrapper">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div class="fullscreen-icon-container">
+              <i
+                class="fas fa-expand"
+                id="remoteFullscreenBtn"
+                title="Go Full Screen"
+              ></i>
+              <i
+                class="fas fa-compress"
+                id="remoteExitFullscreenBtn"
+                title="Exit Full Screen"
+                style="display: none"
+              ></i>
+            </div>
+          </div>
+          <div class="video-wrapper">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <div class="fullscreen-icon-container">
+              <i
+                class="fas fa-expand"
+                id="localFullscreenBtn"
+                title="Go Full Screen"
+              ></i>
+              <i
+                class="fas fa-compress"
+                id="localExitFullscreenBtn"
+                title="Exit Full Screen"
+                style="display: none"
+              ></i>
+            </div>
           </div>
         </div>
-        <div class="video-wrapper">
-          <video id="remoteVideo" autoplay playsinline></video>
-          <div class="fullscreen-icon-container">
-            <i
-              class="fas fa-expand"
-              id="remoteFullscreenBtn"
-              title="Go Full Screen"
-            ></i>
-            <i
-              class="fas fa-compress"
-              id="remoteExitFullscreenBtn"
-              title="Exit Full Screen"
-              style="display: none"
-            ></i>
+
+        <div class="chat-container">
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="chat-input-container">
+            <input
+              type="text"
+              id="chatInput"
+              class="chat-input"
+              placeholder="Type a message..."
+            />
+            <button class="chat-send-button" id="sendMessageButton">Send</button>
           </div>
         </div>
       </div>
@@ -409,19 +439,6 @@
       </div>
 
       <div class="callStatus" id="callStatus"></div>
-
-      <div class="chat-container">
-        <div class="chat-messages" id="chatMessages"></div>
-        <div class="chat-input-container">
-          <input
-            type="text"
-            id="chatInput"
-            class="chat-input"
-            placeholder="Type a message..."
-          />
-          <button class="chat-send-button" id="sendMessageButton">Send</button>
-        </div>
-      </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -439,7 +456,6 @@
       const sendMessageButton = document.getElementById("sendMessageButton");
       const callStatus = document.getElementById("callStatus");
       const roomIdDisplay = document.getElementById("roomIdDisplay");
-      // const fullscreenBtn = document.getElementById("fullscreenBtn"); // This button is not used in the updated design
       const localFullscreenBtn = document.getElementById("localFullscreenBtn");
       const localExitFullscreenBtn = document.getElementById(
         "localExitFullscreenBtn"
@@ -456,7 +472,7 @@
       let roomId;
       let screenStream;
       let isScreenSharing = false;
-      let isLocalFullScreen = false; // Renamed from isFullScreen to be more specific
+      let isLocalFullScreen = false;
       let isRemoteFullScreen = false;
 
       const configuration = {
@@ -570,68 +586,56 @@
       // Handle fullscreen toggle for local video
       localFullscreenBtn.addEventListener("click", () => {
         if (isLocalFullScreen) {
-          exitFullScreen(); // Call exit fullscreen on the document
+          exitFullScreen();
         } else {
           enterFullScreen(localVideo);
         }
       });
 
       localExitFullscreenBtn.addEventListener("click", () => {
-        exitFullScreen(); // Call exit fullscreen on the document
+        exitFullScreen();
       });
 
       // Handle fullscreen toggle for remote video
       remoteFullscreenBtn.addEventListener("click", () => {
         if (isRemoteFullScreen) {
-          exitFullScreen(); // Call exit fullscreen on the document
+          exitFullScreen();
         } else {
           enterFullScreen(remoteVideo);
         }
       });
 
       remoteExitFullscreenBtn.addEventListener("click", () => {
-        exitFullScreen(); // Call exit fullscreen on the document
+        exitFullScreen();
       });
 
 
-      // Function to request fullscreen for a video element
       function enterFullScreen(videoElement) {
         if (videoElement.requestFullscreen) {
           videoElement.requestFullscreen();
         } else if (videoElement.mozRequestFullScreen) {
-          /* Firefox */
           videoElement.mozRequestFullScreen();
         } else if (videoElement.webkitRequestFullscreen) {
-          /* Chrome, Safari & Opera */
           videoElement.webkitRequestFullscreen();
         } else if (videoElement.msRequestFullscreen) {
-          /* IE/Edge */
           videoElement.msRequestFullscreen();
         }
       }
 
-      // Function to exit fullscreen for a video element
-      // This function is for the entire document, not a specific element.
-      // We listen to fullscreenchange event to update button visibility.
       function exitFullScreen() {
         if (document.exitFullscreen) {
           document.exitFullscreen();
         } else if (document.mozCancelFullScreen) {
-          /* Firefox */
           document.mozCancelFullScreen();
         } else if (document.webkitExitFullscreen) {
-          /* Chrome, Safari & Opera */
           document.webkitExitFullscreen();
         } else if (document.msExitFullscreen) {
-          /* IE/Edge */
           document.msExitFullscreen();
         }
       }
 
-      // Listen for fullscreen change event to update button visibility
       document.addEventListener('fullscreenchange', (event) => {
         if (!document.fullscreenElement) {
-          // If no element is in fullscreen, reset all fullscreen buttons
           localFullscreenBtn.style.display = "block";
           localExitFullscreenBtn.style.display = "none";
           isLocalFullScreen = false;
@@ -649,7 +653,7 @@
           remoteExitFullscreenBtn.style.display = "block";
         }
       });
-      document.addEventListener('webkitfullscreenchange', (event) => { /* Chrome, Safari & Opera */
+      document.addEventListener('webkitfullscreenchange', (event) => {
         if (!document.webkitFullscreenElement) {
           localFullscreenBtn.style.display = "block";
           localExitFullscreenBtn.style.display = "none";
@@ -668,7 +672,7 @@
           remoteExitFullscreenBtn.style.display = "block";
         }
       });
-      document.addEventListener('mozfullscreenchange', (event) => { /* Firefox */
+      document.addEventListener('mozfullscreenchange', (event) => {
         if (!document.mozFullScreenElement) {
           localFullscreenBtn.style.display = "block";
           localExitFullscreenBtn.style.display = "none";
@@ -687,7 +691,7 @@
           remoteExitFullscreenBtn.style.display = "block";
         }
       });
-      document.addEventListener('msfullscreenchange', (event) => { /* IE/Edge */
+      document.addEventListener('msfullscreenchange', (event) => {
         if (!document.msFullscreenElement) {
           localFullscreenBtn.style.display = "block";
           localExitFullscreenBtn.style.display = "none";
@@ -776,7 +780,7 @@
         toggleAudioBtn.disabled = true;
         toggleVideoBtn.disabled = true;
         shareScreenBtn.disabled = true;
-        disconnectBtn.disabled = true; // Disable disconnect button after call ends
+        disconnectBtn.disabled = true;
 
         // Reset button states
         toggleVideoBtn.classList.remove('active');
@@ -812,7 +816,6 @@
 
           const screenTrack = screenStream.getVideoTracks()[0];
 
-          // Listen for screen sharing stop event
           screenTrack.onended = () => {
             stopScreenSharing();
           };
@@ -820,14 +823,13 @@
           localVideo.srcObject = screenStream;
           isScreenSharing = true;
           shareScreenBtn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop Sharing';
-          shareScreenBtn.classList.add('active'); // Add active class when sharing
+          shareScreenBtn.classList.add('active');
 
           if (peerConnection) {
             const videoSender = peerConnection.getSenders().find(sender => sender.track.kind === 'video');
             if (videoSender) {
                 videoSender.replaceTrack(screenTrack);
             } else {
-                // If there's no video sender yet, add the track
                 peerConnection.addTrack(screenTrack, screenStream);
             }
           }
@@ -840,7 +842,7 @@
           }
           isScreenSharing = false;
           shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
-          shareScreenBtn.classList.remove('active'); // Remove active class on error
+          shareScreenBtn.classList.remove('active');
         }
       }
 
@@ -852,7 +854,7 @@
         localVideo.srcObject = localStream;
         isScreenSharing = false;
         shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
-        shareScreenBtn.classList.remove('active'); // Remove active class when stopped
+        shareScreenBtn.classList.remove('active');
 
         if (peerConnection && localStream) {
           const videoSender = peerConnection.getSenders().find(sender => sender.track.kind === 'video');
@@ -867,12 +869,11 @@
         if (chatInput.value.trim()) {
           const message = chatInput.value;
           socket.emit("chat-message", { message, roomId });
-          displayMessage("You: " + message, 'self'); // Add a class for self messages
+          displayMessage("You: " + message, 'self');
           chatInput.value = "";
         }
       };
 
-      // Allow sending messages with Enter key
       chatInput.addEventListener('keypress', (event) => {
         if (event.key === 'Enter') {
           sendMessageButton.click();
@@ -880,20 +881,20 @@
       });
 
       socket.on("chat-message", (messageData) => {
-        displayMessage(messageData.message, 'remote'); // Add a class for remote messages
+        displayMessage(messageData.message, 'remote');
       });
 
       function displayMessage(message, type) {
         const messageElement = document.createElement("div");
         messageElement.textContent = message;
-        messageElement.classList.add('chat-message'); // Generic class
+        messageElement.classList.add('chat-message');
         if (type === 'self') {
             messageElement.classList.add('self-message');
         } else {
             messageElement.classList.add('remote-message');
         }
         chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
       }
     </script>
   </body>
