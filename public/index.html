@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FaceTimey - Video Call</title>
+    <title>FaceTimey - Video Call with Translation</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -61,12 +61,46 @@
         background-color: #2f3032;
         border-radius: 20px;
         margin-bottom: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
       }
 
       #roomIdDisplay {
         color: #e8eaed;
         font-weight: normal;
       }
+
+      .language-select-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #e8eaed;
+      }
+
+      .language-select-group label {
+        font-size: 14px;
+        white-space: nowrap;
+      }
+
+      .language-select-group select {
+        padding: 6px 10px;
+        border-radius: 5px;
+        background-color: #3c4043;
+        color: #e8eaed;
+        border: 1px solid #5f6368;
+        outline: none;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      .language-select-group select:focus {
+        border-color: #8ab4f8;
+        box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.4);
+      }
+
 
       /* Main Content Area - New Flex Container */
       .main-content {
@@ -85,7 +119,6 @@
         gap: 15px;
         width: 100%;
         min-height: 200px;
-        /* Remove explicit height here, let flex-grow determine it */
         height: 100%; /* Fill the available height in main-content */
       }
 
@@ -298,6 +331,27 @@
         background-color: #a0c3ff;
       }
 
+      /* Add a subtle scrollbar style for chat messages */
+      .chat-messages::-webkit-scrollbar {
+        width: 8px;
+        border-radius: 4px;
+      }
+
+      .chat-messages::-webkit-scrollbar-track {
+        background: #2f3032;
+        border-radius: 4px;
+      }
+
+      .chat-messages::-webkit-scrollbar-thumb {
+        background-color: #5f6368;
+        border-radius: 4px;
+      }
+
+      .chat-messages::-webkit-scrollbar-thumb:hover {
+        background-color: #7a7d80;
+      }
+
+
       /* Responsive adjustments */
       @media (max-width: 1024px) {
         .main-content {
@@ -350,26 +404,10 @@
         .chat-messages {
             min-height: 80px;
         }
-      }
-
-      /* Add a subtle scrollbar style for chat messages */
-      .chat-messages::-webkit-scrollbar {
-        width: 8px;
-        border-radius: 4px;
-      }
-
-      .chat-messages::-webkit-scrollbar-track {
-        background: #2f3032;
-        border-radius: 4px;
-      }
-
-      .chat-messages::-webkit-scrollbar-thumb {
-        background-color: #5f6368;
-        border-radius: 4px;
-      }
-
-      .chat-messages::-webkit-scrollbar-thumb:hover {
-        background-color: #7a7d80;
+        #roomInfo {
+          flex-direction: column;
+          align-items: center;
+        }
       }
     </style>
   </head>
@@ -379,6 +417,26 @@
 
       <div id="roomInfo">
         <span>Room ID: <strong id="roomIdDisplay"></strong></span>
+        <div class="language-select-group">
+            <label for="myLanguage">My Language:</label>
+            <select id="myLanguage">
+                <option value="en-US">English</option>
+                <option value="hi-IN">Hindi</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="fr-FR">French</option>
+                <!-- Add more languages as needed -->
+            </select>
+        </div>
+        <div class="language-select-group">
+            <label for="targetLanguage">Translate To:</label>
+            <select id="targetLanguage">
+                <option value="en-US">English</option>
+                <option value="hi-IN">Hindi</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="fr-FR">French</option>
+                <!-- Add more languages as needed -->
+            </select>
+        </div>
       </div>
 
       <div class="main-content">
@@ -456,6 +514,10 @@
       const sendMessageButton = document.getElementById("sendMessageButton");
       const callStatus = document.getElementById("callStatus");
       const roomIdDisplay = document.getElementById("roomIdDisplay");
+
+      const myLanguageSelect = document.getElementById("myLanguage");
+      const targetLanguageSelect = document.getElementById("targetLanguage");
+
       const localFullscreenBtn = document.getElementById("localFullscreenBtn");
       const localExitFullscreenBtn = document.getElementById(
         "localExitFullscreenBtn"
@@ -475,11 +537,55 @@
       let isLocalFullScreen = false;
       let isRemoteFullScreen = false;
 
+      // AudioContext for sending local audio for translation
+      let audioContext;
+      let mediaStreamSource;
+      let audioWorkletNode;
+
+      // AudioContext for playing translated audio
+      let translatedAudioContext;
+      let translatedAudioQueue = [];
+      let isTranslatedAudioPlaying = false;
+
+      // Define the sample rate for audio processing. This should ideally match
+      // the sample rate expected by your STT/TTS APIs.
+      const SAMPLE_RATE = 48000;
+      // Define the buffer size for audio chunks sent for translation.
+      // Smaller chunks mean lower latency but more frequent network traffic.
+      const AUDIO_CHUNK_SIZE = 2048; // Corresponds to ~42ms at 48kHz
+
+      // WebRTC configuration
       const configuration = {
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       };
 
-      // Initialize media
+      // --- AudioWorklet Processor Code (embedded for self-containment) ---
+      // In a real project, this would be in a separate 'audio-processor.js' file.
+      const audioProcessorCode = `
+        class AudioProcessor extends AudioWorkletProcessor {
+            constructor() {
+                super();
+                // Send audio data from the first channel (mono)
+                this.port.postMessage("AudioWorklet initialized.");
+            }
+
+            process(inputs, outputs, parameters) {
+                const input = inputs[0]; // Get the first input (from microphone)
+                if (input.length > 0) {
+                    const audioData = input[0]; // Get the audio data for the first channel (mono)
+                    // Post the audio data back to the main thread
+                    this.port.postMessage(audioData.buffer, [audioData.buffer]); // Transferable
+                }
+                return true; // Keep the AudioWorkletNode alive
+            }
+        }
+        registerProcessor('audio-processor', AudioProcessor);
+      `;
+      const audioProcessorBlob = new Blob([audioProcessorCode], { type: 'application/javascript' });
+      const audioProcessorUrl = URL.createObjectURL(audioProcessorBlob);
+      // --- End AudioWorklet Processor Code ---
+
+      // Initialize media (camera, mic) and audio processing for translation
       async function initMedia() {
         try {
           const constraints = {
@@ -494,7 +600,6 @@
           localVideo.srcObject = localStream;
 
           // Initial state: Set active class if tracks are initially enabled.
-          // This assumes media is initialized as enabled.
           if (localStream.getVideoTracks()[0].enabled) {
             toggleVideoBtn.classList.add('active');
             toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
@@ -504,13 +609,55 @@
             toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
           }
 
+          // Setup AudioContext for sending local audio for translation
+          audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+          mediaStreamSource = audioContext.createMediaStreamSource(localStream);
+
+          // Add the AudioWorklet module
+          await audioContext.audioWorklet.addModule(audioProcessorUrl);
+          audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor', {
+              processorOptions: { sampleRate: SAMPLE_RATE, chunkSize: AUDIO_CHUNK_SIZE }
+          });
+
+          // Connect the microphone stream to the AudioWorkletNode
+          mediaStreamSource.connect(audioWorkletNode);
+
+          // Connect AudioWorkletNode to destination if you want to hear your own mic locally (muted by HTML video tag)
+          // audioWorkletNode.connect(audioContext.destination);
+
+          // Listen for messages from the AudioWorklet (audio chunks)
+          audioWorkletNode.port.onmessage = (event) => {
+              if (event.data === "AudioWorklet initialized.") {
+                  console.log("AudioWorklet processor ready.");
+                  return;
+              }
+              const audioData = new Float32Array(event.data); // Received as ArrayBuffer, convert back to Float32Array
+
+              // Only send audio for translation if the audio track is enabled
+              if (localStream.getAudioTracks()[0].enabled) {
+                  // Send audio chunk, and selected languages to the server for translation
+                  socket.emit("audio-chunk-for-translation", {
+                      chunk: audioData,
+                      spokenLanguage: myLanguageSelect.value,
+                      targetLanguage: targetLanguageSelect.value,
+                  });
+              }
+          };
+
         } catch (e) {
           alert("Could not get user media. Please ensure camera and microphone permissions are granted.");
           console.error("Error initializing media:", e);
         }
       }
 
+      // Initialize Translated Audio Playback Context
+      function setupTranslatedAudioPlayback() {
+          translatedAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+      }
+
+      // Call this when the page loads
       initMedia();
+      setupTranslatedAudioPlayback();
 
       // Prompt user to enter room ID
       roomId = prompt("Enter room ID to join or create:");
@@ -522,6 +669,37 @@
       roomIdDisplay.textContent = roomId;
 
       socket.emit("join-room", roomId);
+
+      // Listen for language changes and send to server
+      myLanguageSelect.addEventListener("change", () => {
+          socket.emit("set-languages", {
+              spoken: myLanguageSelect.value,
+              target: targetLanguageSelect.value
+          });
+      });
+
+      targetLanguageSelect.addEventListener("change", () => {
+          socket.emit("set-languages", {
+              spoken: myLanguageSelect.value,
+              target: targetLanguageSelect.value
+          });
+      });
+
+      // Initial language setting when joining the room
+      socket.on("connect", () => {
+        socket.emit("set-languages", {
+            spoken: myLanguageSelect.value,
+            target: targetLanguageSelect.value
+        });
+      });
+
+      // Listen for language updates from other peers
+      socket.on("peer-language-update", ({ userId, languages }) => {
+        console.log(`Peer ${userId} set languages:`, languages);
+        // You could update UI here to show peer's languages if desired
+        // E.g., add a label next to their video: `User ${userId} (Speaks: ${languages.spoken}, Translates to: ${languages.target})`
+      });
+
 
       socket.on("user-connected", (userId) => {
         callStatus.textContent = `User ${userId} connected.`;
@@ -555,10 +733,49 @@
         }
       });
 
-      socket.on("user-disconnected", () => {
-        callStatus.textContent = "User disconnected. Call ended.";
-        endCall();
+      socket.on("user-disconnected", (disconnectedUserId) => {
+        callStatus.textContent = `User ${disconnectedUserId} disconnected. Call ended.`;
+        endCall(); // For 1-on-1, call ends if one disconnects
       });
+
+      // Handle incoming translated audio chunks
+      socket.on("translated-audio-chunk", (audioBuffer) => {
+          // Add the incoming audio buffer (Float32Array) to the queue
+          translatedAudioQueue.push(audioBuffer);
+          if (!isTranslatedAudioPlaying) {
+              playNextTranslatedAudioChunk();
+          }
+      });
+
+      // Function to play audio from the queue
+      async function playNextTranslatedAudioChunk() {
+          if (translatedAudioQueue.length === 0) {
+              isTranslatedAudioPlaying = false;
+              return;
+          }
+
+          isTranslatedAudioPlaying = true;
+          const chunk = translatedAudioQueue.shift();
+
+          // Create an AudioBuffer from the incoming raw audio chunk
+          const audioBuffer = translatedAudioContext.createBuffer(
+              1, // Number of channels (mono)
+              chunk.length, // Number of samples
+              SAMPLE_RATE // Sample rate
+          );
+          // Copy the Float32Array data to the AudioBuffer
+          audioBuffer.copyToChannel(new Float32Array(chunk), 0);
+
+          const source = translatedAudioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(translatedAudioContext.destination);
+          source.start(0); // Play immediately
+
+          source.onended = () => {
+              playNextTranslatedAudioChunk(); // Play the next chunk when this one ends
+          };
+      }
+
 
       // Create peer connection
       function createPeerConnection() {
@@ -571,10 +788,12 @@
         };
 
         peerConnection.ontrack = (event) => {
+          // This `ontrack` is for the primary WebRTC video/audio stream
           remoteVideo.srcObject = event.streams[0];
           callStatus.textContent = "Connected!";
         };
 
+        // Add local stream tracks to the peer connection for WebRTC
         const streamToAdd = isScreenSharing ? screenStream : localStream;
         if (streamToAdd) {
             streamToAdd.getTracks().forEach((track) => {
@@ -751,7 +970,7 @@
 
       // Disconnect call
       disconnectBtn.onclick = () => {
-        socket.emit("disconnect-call", roomId);
+        socket.emit("disconnect-call"); // No need to pass roomId, server knows
         endCall();
       };
 
@@ -775,6 +994,18 @@
           screenStream.getTracks().forEach(track => track.stop());
           screenStream = null;
         }
+
+        // Stop AudioContext for local audio processing
+        if (audioContext && audioContext.state !== 'closed') {
+            audioContext.close();
+            audioContext = null;
+        }
+        // Stop AudioContext for translated audio playback
+        if (translatedAudioContext && translatedAudioContext.state !== 'closed') {
+            translatedAudioContext.close();
+            translatedAudioContext = null;
+        }
+        translatedAudioQueue = []; // Clear any pending audio
 
         callStatus.textContent = "Call Disconnected";
         toggleAudioBtn.disabled = true;
@@ -826,7 +1057,7 @@
           shareScreenBtn.classList.add('active');
 
           if (peerConnection) {
-            const videoSender = peerConnection.getSenders().find(sender => sender.track.kind === 'video');
+            const videoSender = peerConnection.getSenders().find(sender => sender.track && sender.track.kind === 'video');
             if (videoSender) {
                 videoSender.replaceTrack(screenTrack);
             } else {
@@ -857,9 +1088,15 @@
         shareScreenBtn.classList.remove('active');
 
         if (peerConnection && localStream) {
-          const videoSender = peerConnection.getSenders().find(sender => sender.track.kind === 'video');
+          const videoSender = peerConnection.getSenders().find(sender => sender.track && sender.track.kind === 'video');
           if (videoSender) {
-            videoSender.replaceTrack(localStream.getVideoTracks()[0]);
+            // Replace with the original camera video track
+            const cameraVideoTrack = localStream.getVideoTracks()[0];
+            if (cameraVideoTrack) {
+                videoSender.replaceTrack(cameraVideoTrack);
+            } else {
+                console.warn("No camera video track available to replace screen share.");
+            }
           }
         }
       }
@@ -881,7 +1118,10 @@
       });
 
       socket.on("chat-message", (messageData) => {
-        displayMessage(messageData.message, 'remote');
+        // Only display if not from self (for chat, display self messages locally)
+        if (messageData.userId !== socket.id) {
+            displayMessage(messageData.message, 'remote');
+        }
       });
 
       function displayMessage(message, type) {
@@ -894,7 +1134,7 @@
             messageElement.classList.add('remote-message');
         }
         chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to latest message
       }
     </script>
   </body>
