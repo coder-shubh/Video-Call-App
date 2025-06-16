@@ -23,7 +23,7 @@
       }
 
       body {
-        font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+        font-family: "Google Sans", "Roboto", Arial, sans-serif;
         background-color: #1a1a1a;
         display: flex;
         justify-content: center;
@@ -51,21 +51,21 @@
         display: none;
       }
 
-      /* Room Info */
-      #roomInfo {
-        margin-top: 10px;
-        font-size: 14px;
-        color: #9aa0a6;
-        text-align: center;
+      /* Room Info and Language Select */
+      #topBar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 20px;
         padding: 5px 15px;
         background-color: #2f3032;
         border-radius: 20px;
-        margin-bottom: 20px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: center;
-        justify-content: center;
+      }
+
+      #roomInfo {
+        font-size: 14px;
+        color: #9aa0a6;
       }
 
       #roomIdDisplay {
@@ -73,34 +73,36 @@
         font-weight: normal;
       }
 
-      .language-select-group {
+      .language-select-container {
         display: flex;
         align-items: center;
-        gap: 8px;
-        color: #e8eaed;
+        gap: 10px;
       }
 
-      .language-select-group label {
+      .language-select-container label {
         font-size: 14px;
-        white-space: nowrap;
+        color: #9aa0a6;
       }
 
-      .language-select-group select {
-        padding: 6px 10px;
-        border-radius: 5px;
+      .language-select-container select {
+        padding: 8px 12px;
+        border-radius: 20px;
+        border: 1px solid #3c4043;
         background-color: #3c4043;
         color: #e8eaed;
-        border: 1px solid #5f6368;
+        font-size: 14px;
         outline: none;
         cursor: pointer;
-        font-size: 14px;
+        appearance: none; /* Remove default dropdown arrow */
+        background-image: url('data:image/svg+xml;utf8,<svg fill="%23e8eaed" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 18px;
       }
 
-      .language-select-group select:focus {
-        border-color: #8ab4f8;
-        box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.4);
+      .language-select-container select:hover {
+        background-color: #5f6368;
       }
-
 
       /* Main Content Area - New Flex Container */
       .main-content {
@@ -109,6 +111,7 @@
         width: 100%;
         gap: 20px; /* Space between video and chat */
         overflow: hidden; /* Prevent horizontal scroll */
+        position: relative; /* For subtitles */
       }
 
       /* Video Container */
@@ -119,6 +122,7 @@
         gap: 15px;
         width: 100%;
         min-height: 200px;
+        /* Remove explicit height here, let flex-grow determine it */
         height: 100%; /* Fill the available height in main-content */
       }
 
@@ -210,7 +214,7 @@
       }
 
       #shareScreen.active {
-        background-color: #4CAF50;
+        background-color: #4caf50;
         color: #fff;
       }
 
@@ -331,26 +335,36 @@
         background-color: #a0c3ff;
       }
 
-      /* Add a subtle scrollbar style for chat messages */
-      .chat-messages::-webkit-scrollbar {
-        width: 8px;
-        border-radius: 4px;
+      /* Subtitle Overlay */
+      #subtitleOverlay {
+        position: absolute;
+        bottom: 120px; /* Above controls */
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 10px 20px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: #fff;
+        font-size: 18px;
+        text-align: center;
+        border-radius: 8px;
+        z-index: 100;
+        display: none; /* Hidden by default */
+        box-sizing: border-box;
       }
 
-      .chat-messages::-webkit-scrollbar-track {
-        background: #2f3032;
-        border-radius: 4px;
+      #subtitleOriginal {
+        font-size: 16px;
+        color: #bbb;
+        margin-bottom: 5px;
       }
 
-      .chat-messages::-webkit-scrollbar-thumb {
-        background-color: #5f6368;
-        border-radius: 4px;
+      #subtitleTranslated {
+        font-size: 20px;
+        font-weight: bold;
       }
-
-      .chat-messages::-webkit-scrollbar-thumb:hover {
-        background-color: #7a7d80;
-      }
-
 
       /* Responsive adjustments */
       @media (max-width: 1024px) {
@@ -375,6 +389,14 @@
           max-height: 300px; /* Limit chat height when stacked */
           min-height: 150px;
         }
+
+        #subtitleOverlay {
+          bottom: 10px; /* Position lower on smaller screens */
+          font-size: 16px;
+        }
+        #subtitleTranslated {
+          font-size: 18px;
+        }
       }
 
       @media (max-width: 768px) {
@@ -397,17 +419,43 @@
         }
 
         .chat-container {
-            max-height: 250px;
-            min-height: 100px;
+          max-height: 250px;
+          min-height: 100px;
         }
 
         .chat-messages {
-            min-height: 80px;
+          min-height: 80px;
         }
-        #roomInfo {
-          flex-direction: column;
-          align-items: center;
+
+        #topBar {
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
         }
+        .language-select-container {
+            width: 100%;
+            justify-content: center;
+        }
+      }
+
+      /* Add a subtle scrollbar style for chat messages */
+      .chat-messages::-webkit-scrollbar {
+        width: 8px;
+        border-radius: 4px;
+      }
+
+      .chat-messages::-webkit-scrollbar-track {
+        background: #2f3032;
+        border-radius: 4px;
+      }
+
+      .chat-messages::-webkit-scrollbar-thumb {
+        background-color: #5f6368;
+        border-radius: 4px;
+      }
+
+      .chat-messages::-webkit-scrollbar-thumb:hover {
+        background-color: #7a7d80;
       }
     </style>
   </head>
@@ -415,26 +463,22 @@
     <div class="container">
       <h1>FaceTimey - Simple Video Call</h1>
 
-      <div id="roomInfo">
-        <span>Room ID: <strong id="roomIdDisplay"></strong></span>
-        <div class="language-select-group">
-            <label for="myLanguage">My Language:</label>
-            <select id="myLanguage">
-                <option value="en-US">English</option>
-                <option value="hi-IN">Hindi</option>
-                <option value="ja-JP">Japanese</option>
-                <option value="fr-FR">French</option>
-                <!-- Add more languages as needed -->
-            </select>
+      <div id="topBar">
+        <div id="roomInfo">
+          <span>Room ID: <strong id="roomIdDisplay"></strong></span>
         </div>
-        <div class="language-select-group">
-            <label for="targetLanguage">Translate To:</label>
-            <select id="targetLanguage">
-                <option value="en-US">English</option>
-                <option value="hi-IN">Hindi</option>
-                <option value="ja-JP">Japanese</option>
-                <option value="fr-FR">French</option>
-                <!-- Add more languages as needed -->
+        <div class="language-select-container">
+          <label for="preferredLanguage">My Language:</label>
+          <select id="preferredLanguage">
+            <option value="en-US">English (US)</option>
+            <option value="es-ES">Spanish (Spain)</option>
+            <option value="fr-FR">French (France)</option>
+            <option value="de-DE">German (Germany)</option>
+            <option value="ja-JP">Japanese (Japan)</option>
+            <option value="ko-KR">Korean (South Korea)</option>
+            <option value="zh-CN">Chinese (Mandarin, Simplified)</option>
+            <option value="ru-RU">Russian (Russia)</option>
+            <option value="ar-EG">Arabic (Egypt)</option>
             </select>
         </div>
       </div>
@@ -484,16 +528,32 @@
               class="chat-input"
               placeholder="Type a message..."
             />
-            <button class="chat-send-button" id="sendMessageButton">Send</button>
+            <button class="chat-send-button" id="sendMessageButton">
+              Send
+            </button>
           </div>
+        </div>
+        
+        <div id="subtitleOverlay">
+            <div id="subtitleOriginal"></div>
+            <div id="subtitleTranslated"></div>
         </div>
       </div>
 
       <div class="controls">
-        <button id="toggleVideo"><i class="fas fa-video"></i> Turn Camera Off</button>
+        <button id="toggleVideo">
+          <i class="fas fa-video"></i> Turn Camera Off
+        </button>
         <button id="toggleAudio"><i class="fas fa-microphone"></i> Mute</button>
-        <button id="shareScreen"><i class="fas fa-desktop"></i> Share Screen</button>
-        <button id="disconnect"><i class="fas fa-phone-slash"></i> Leave Call</button>
+        <button id="shareScreen">
+          <i class="fas fa-desktop"></i> Share Screen
+        </button>
+        <button id="toggleTranslationSubtitles">
+            <i class="fas fa-closed-captioning"></i> Toggle Subtitles
+        </button>
+        <button id="disconnect">
+          <i class="fas fa-phone-slash"></i> Leave Call
+        </button>
       </div>
 
       <div class="callStatus" id="callStatus"></div>
@@ -514,10 +574,6 @@
       const sendMessageButton = document.getElementById("sendMessageButton");
       const callStatus = document.getElementById("callStatus");
       const roomIdDisplay = document.getElementById("roomIdDisplay");
-
-      const myLanguageSelect = document.getElementById("myLanguage");
-      const targetLanguageSelect = document.getElementById("targetLanguage");
-
       const localFullscreenBtn = document.getElementById("localFullscreenBtn");
       const localExitFullscreenBtn = document.getElementById(
         "localExitFullscreenBtn"
@@ -528,6 +584,12 @@
       const remoteExitFullscreenBtn = document.getElementById(
         "remoteExitFullscreenBtn"
       );
+      const preferredLanguageSelect = document.getElementById("preferredLanguage");
+      const subtitleOverlay = document.getElementById("subtitleOverlay");
+      const subtitleOriginal = document.getElementById("subtitleOriginal");
+      const subtitleTranslated = document.getElementById("subtitleTranslated");
+      const toggleTranslationSubtitlesBtn = document.getElementById("toggleTranslationSubtitles");
+
 
       let localStream;
       let peerConnection;
@@ -536,56 +598,110 @@
       let isScreenSharing = false;
       let isLocalFullScreen = false;
       let isRemoteFullScreen = false;
+      let audioContextForTranslated;
+      let audioQueue = [];
+      let isPlaying = false;
+      let isSubtitleEnabled = true; // Default to true
 
-      // AudioContext for sending local audio for translation
-      let audioContext;
-      let mediaStreamSource;
+      // Web Audio API for sending mic audio to server
+      let audioContextForMic;
+      let microphoneSource;
       let audioWorkletNode;
 
-      // AudioContext for playing translated audio
-      let translatedAudioContext;
-      let translatedAudioQueue = [];
-      let isTranslatedAudioPlaying = false;
+      function setupTranslatedAudioPlayback() {
+        audioContextForTranslated = new (window.AudioContext ||
+          window.webkitAudioContext)();
+      }
 
-      // Define the sample rate for audio processing. This should ideally match
-      // the sample rate expected by your STT/TTS APIs.
-      const SAMPLE_RATE = 48000;
-      // Define the buffer size for audio chunks sent for translation.
-      // Smaller chunks mean lower latency but more frequent network traffic.
-      const AUDIO_CHUNK_SIZE = 2048; // Corresponds to ~42ms at 48kHz
+      socket.on("translated-audio-chunk", (audioBuffer) => {
+        // audioBuffer is expected to be a raw PCM Float32Array from the server
+        // This assumes the server has converted the TTS output to Float32Array
+        // If server sends different format (e.g., MP3/WAV), you'll need to decode here.
+        if (audioBuffer.byteLength > 0) {
+            audioQueue.push(audioBuffer);
+            if (!isPlaying) {
+                playNextAudioChunk();
+            }
+        }
+      });
 
-      // WebRTC configuration
+      async function playNextAudioChunk() {
+        if (audioQueue.length === 0) {
+          isPlaying = false;
+          return;
+        }
+
+        isPlaying = true;
+        const chunk = audioQueue.shift();
+
+        // Create an AudioBuffer and fill it with the incoming chunk
+        // Assuming server sends mono, 16kHz Float32Array
+        const arrayBuffer = audioContextForTranslated.createBuffer(
+          1, // mono
+          chunk.length,
+          16000 // IMPORTANT: Match the sample rate of TTS output from server
+        );
+        // Assuming chunk is already a Float32Array, copy directly
+        arrayBuffer.copyToChannel(new Float32Array(chunk), 0);
+
+        const source = audioContextForTranslated.createBufferSource();
+        source.buffer = arrayBuffer;
+        source.connect(audioContextForTranslated.destination);
+        source.start(0);
+
+        source.onended = () => {
+          playNextAudioChunk();
+        };
+      }
+
+      // Subtitle display handler
+      let subtitleTimeout;
+      socket.on("subtitle-data", (data) => {
+          if (!isSubtitleEnabled) return;
+
+          const { originalText, translatedText, isFinal } = data;
+
+          subtitleOriginal.textContent = originalText;
+          subtitleTranslated.textContent = translatedText || originalText; // Show original if no translation yet
+
+          subtitleOverlay.style.display = 'block';
+
+          // Clear any previous timeout to keep subtitle visible for ongoing speech
+          clearTimeout(subtitleTimeout);
+
+          if (isFinal) {
+              // Hide subtitle after a short delay for final results
+              subtitleTimeout = setTimeout(() => {
+                  subtitleOverlay.style.display = 'none';
+                  subtitleOriginal.textContent = '';
+                  subtitleTranslated.textContent = '';
+              }, 3000); // Display final subtitle for 3 seconds
+          }
+          // Interim results will keep extending the timeout
+      });
+
+      toggleTranslationSubtitlesBtn.addEventListener('click', () => {
+        isSubtitleEnabled = !isSubtitleEnabled;
+        if (!isSubtitleEnabled) {
+            subtitleOverlay.style.display = 'none';
+            subtitleOriginal.textContent = '';
+            subtitleTranslated.textContent = '';
+        }
+        toggleTranslationSubtitlesBtn.classList.toggle('active', isSubtitleEnabled);
+        toggleTranslationSubtitlesBtn.innerHTML = isSubtitleEnabled ?
+            '<i class="fas fa-closed-captioning"></i> Hide Subtitles' :
+            '<i class="fas fa-closed-captioning"></i> Show Subtitles';
+      });
+
+
+      // Call this on page load for translated audio playback
+      setupTranslatedAudioPlayback();
+
       const configuration = {
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       };
 
-      // --- AudioWorklet Processor Code (embedded for self-containment) ---
-      // In a real project, this would be in a separate 'audio-processor.js' file.
-      const audioProcessorCode = `
-        class AudioProcessor extends AudioWorkletProcessor {
-            constructor() {
-                super();
-                // Send audio data from the first channel (mono)
-                this.port.postMessage("AudioWorklet initialized.");
-            }
-
-            process(inputs, outputs, parameters) {
-                const input = inputs[0]; // Get the first input (from microphone)
-                if (input.length > 0) {
-                    const audioData = input[0]; // Get the audio data for the first channel (mono)
-                    // Post the audio data back to the main thread
-                    this.port.postMessage(audioData.buffer, [audioData.buffer]); // Transferable
-                }
-                return true; // Keep the AudioWorkletNode alive
-            }
-        }
-        registerProcessor('audio-processor', AudioProcessor);
-      `;
-      const audioProcessorBlob = new Blob([audioProcessorCode], { type: 'application/javascript' });
-      const audioProcessorUrl = URL.createObjectURL(audioProcessorBlob);
-      // --- End AudioWorklet Processor Code ---
-
-      // Initialize media (camera, mic) and audio processing for translation
+      // Initialize media and audio processing for translation
       async function initMedia() {
         try {
           const constraints = {
@@ -599,65 +715,64 @@
           localStream = await navigator.mediaDevices.getUserMedia(constraints);
           localVideo.srcObject = localStream;
 
+          // Setup audio processing for sending to server for translation
+          await setupAudioProcessingForTranslation(localStream);
+
           // Initial state: Set active class if tracks are initially enabled.
           if (localStream.getVideoTracks()[0].enabled) {
-            toggleVideoBtn.classList.add('active');
-            toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
+            toggleVideoBtn.classList.add("active");
+            toggleVideoBtn.innerHTML =
+              '<i class="fas fa-video"></i> Turn Camera Off';
           }
           if (localStream.getAudioTracks()[0].enabled) {
-            toggleAudioBtn.classList.add('active');
+            toggleAudioBtn.classList.add("active");
             toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
           }
-
-          // Setup AudioContext for sending local audio for translation
-          audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
-          mediaStreamSource = audioContext.createMediaStreamSource(localStream);
-
-          // Add the AudioWorklet module
-          await audioContext.audioWorklet.addModule(audioProcessorUrl);
-          audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor', {
-              processorOptions: { sampleRate: SAMPLE_RATE, chunkSize: AUDIO_CHUNK_SIZE }
-          });
-
-          // Connect the microphone stream to the AudioWorkletNode
-          mediaStreamSource.connect(audioWorkletNode);
-
-          // Connect AudioWorkletNode to destination if you want to hear your own mic locally (muted by HTML video tag)
-          // audioWorkletNode.connect(audioContext.destination);
-
-          // Listen for messages from the AudioWorklet (audio chunks)
-          audioWorkletNode.port.onmessage = (event) => {
-              if (event.data === "AudioWorklet initialized.") {
-                  console.log("AudioWorklet processor ready.");
-                  return;
-              }
-              const audioData = new Float32Array(event.data); // Received as ArrayBuffer, convert back to Float32Array
-
-              // Only send audio for translation if the audio track is enabled
-              if (localStream.getAudioTracks()[0].enabled) {
-                  // Send audio chunk, and selected languages to the server for translation
-                  socket.emit("audio-chunk-for-translation", {
-                      chunk: audioData,
-                      spokenLanguage: myLanguageSelect.value,
-                      targetLanguage: targetLanguageSelect.value,
-                  });
-              }
-          };
-
+          toggleTranslationSubtitlesBtn.classList.add('active'); // Subtitles are active by default
         } catch (e) {
-          alert("Could not get user media. Please ensure camera and microphone permissions are granted.");
+          alert(
+            "Could not get user media. Please ensure camera and microphone permissions are granted."
+          );
           console.error("Error initializing media:", e);
         }
       }
 
-      // Initialize Translated Audio Playback Context
-      function setupTranslatedAudioPlayback() {
-          translatedAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+      // Function to set up audio processing for sending to server
+      async function setupAudioProcessingForTranslation(stream) {
+          if (!stream) return;
+
+          audioContextForMic = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 }); // Common for STT
+          const audioTrack = stream.getAudioTracks()[0];
+          if (!audioTrack) {
+              console.warn("No audio track found for translation processing.");
+              return;
+          }
+
+          microphoneSource = audioContextForMic.createMediaStreamSource(new MediaStream([audioTrack]));
+
+          try {
+              // Add the audio processor worklet module
+              await audioContextForMic.audioWorklet.addModule('/audio-processor.js');
+              audioWorkletNode = new AudioWorkletNode(audioContextForMic, 'audio-processor');
+
+              // Connect microphone to worklet
+              microphoneSource.connect(audioWorkletNode);
+              // Connect worklet to destination (optional, for hearing self)
+              // audioWorkletNode.connect(audioContextForMic.destination);
+
+              audioWorkletNode.port.onmessage = (event) => {
+                  // event.data is the Float32Array audio chunk
+                  if (socket && socket.connected) {
+                      socket.emit("audio-chunk", { chunk: event.data });
+                  }
+              };
+              console.log("Audio processing for translation initialized.");
+          } catch (error) {
+              console.error("Error setting up AudioWorklet:", error);
+          }
       }
 
-      // Call this when the page loads
       initMedia();
-      setupTranslatedAudioPlayback();
 
       // Prompt user to enter room ID
       roomId = prompt("Enter room ID to join or create:");
@@ -670,35 +785,14 @@
 
       socket.emit("join-room", roomId);
 
-      // Listen for language changes and send to server
-      myLanguageSelect.addEventListener("change", () => {
-          socket.emit("set-languages", {
-              spoken: myLanguageSelect.value,
-              target: targetLanguageSelect.value
-          });
+      // Send preferred language to server on initial connection/room join and on change
+      preferredLanguageSelect.addEventListener('change', () => {
+          const selectedLang = preferredLanguageSelect.value;
+          socket.emit('set-preferred-language', selectedLang);
+          console.log(`Preferred language set to: ${selectedLang}`);
       });
-
-      targetLanguageSelect.addEventListener("change", () => {
-          socket.emit("set-languages", {
-              spoken: myLanguageSelect.value,
-              target: targetLanguageSelect.value
-          });
-      });
-
-      // Initial language setting when joining the room
-      socket.on("connect", () => {
-        socket.emit("set-languages", {
-            spoken: myLanguageSelect.value,
-            target: targetLanguageSelect.value
-        });
-      });
-
-      // Listen for language updates from other peers
-      socket.on("peer-language-update", ({ userId, languages }) => {
-        console.log(`Peer ${userId} set languages:`, languages);
-        // You could update UI here to show peer's languages if desired
-        // E.g., add a label next to their video: `User ${userId} (Speaks: ${languages.spoken}, Translates to: ${languages.target})`
-      });
+      // Initial emit
+      socket.emit('set-preferred-language', preferredLanguageSelect.value);
 
 
       socket.on("user-connected", (userId) => {
@@ -712,70 +806,31 @@
         }
 
         try {
-            if (signal.type === "offer") {
-                await peerConnection.setRemoteDescription(
-                new RTCSessionDescription(signal)
-                );
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                socket.emit("signal", peerConnection.localDescription);
-            } else if (signal.type === "answer") {
-                await peerConnection.setRemoteDescription(
-                new RTCSessionDescription(signal)
-                );
-            } else if (signal.candidate) {
-                await peerConnection.addIceCandidate(
-                new RTCIceCandidate(signal.candidate)
-                );
-            }
+          if (signal.type === "offer") {
+            await peerConnection.setRemoteDescription(
+              new RTCSessionDescription(signal)
+            );
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit("signal", peerConnection.localDescription);
+          } else if (signal.type === "answer") {
+            await peerConnection.setRemoteDescription(
+              new RTCSessionDescription(signal)
+            );
+          } else if (signal.candidate) {
+            await peerConnection.addIceCandidate(
+              new RTCIceCandidate(signal.candidate)
+            );
+          }
         } catch (e) {
-            console.error("Error handling signal:", e);
+          console.error("Error handling signal:", e);
         }
       });
 
-      socket.on("user-disconnected", (disconnectedUserId) => {
-        callStatus.textContent = `User ${disconnectedUserId} disconnected. Call ended.`;
-        endCall(); // For 1-on-1, call ends if one disconnects
+      socket.on("user-disconnected", () => {
+        callStatus.textContent = "User disconnected. Call ended.";
+        endCall();
       });
-
-      // Handle incoming translated audio chunks
-      socket.on("translated-audio-chunk", (audioBuffer) => {
-          // Add the incoming audio buffer (Float32Array) to the queue
-          translatedAudioQueue.push(audioBuffer);
-          if (!isTranslatedAudioPlaying) {
-              playNextTranslatedAudioChunk();
-          }
-      });
-
-      // Function to play audio from the queue
-      async function playNextTranslatedAudioChunk() {
-          if (translatedAudioQueue.length === 0) {
-              isTranslatedAudioPlaying = false;
-              return;
-          }
-
-          isTranslatedAudioPlaying = true;
-          const chunk = translatedAudioQueue.shift();
-
-          // Create an AudioBuffer from the incoming raw audio chunk
-          const audioBuffer = translatedAudioContext.createBuffer(
-              1, // Number of channels (mono)
-              chunk.length, // Number of samples
-              SAMPLE_RATE // Sample rate
-          );
-          // Copy the Float32Array data to the AudioBuffer
-          audioBuffer.copyToChannel(new Float32Array(chunk), 0);
-
-          const source = translatedAudioContext.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(translatedAudioContext.destination);
-          source.start(0); // Play immediately
-
-          source.onended = () => {
-              playNextTranslatedAudioChunk(); // Play the next chunk when this one ends
-          };
-      }
-
 
       // Create peer connection
       function createPeerConnection() {
@@ -788,16 +843,19 @@
         };
 
         peerConnection.ontrack = (event) => {
-          // This `ontrack` is for the primary WebRTC video/audio stream
           remoteVideo.srcObject = event.streams[0];
           callStatus.textContent = "Connected!";
         };
 
-        // Add local stream tracks to the peer connection for WebRTC
-        const streamToAdd = isScreenSharing ? screenStream : localStream;
-        if (streamToAdd) {
-            streamToAdd.getTracks().forEach((track) => {
-            peerConnection.addTrack(track, streamToAdd);
+        // Add only video track from localStream to peer connection
+        // The audio for translation is handled separately by AudioWorklet
+        if (localStream) {
+            localStream.getVideoTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+            // If you want to also send the *original* audio via WebRTC, add it here:
+            localStream.getAudioTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
             });
         }
       }
@@ -828,7 +886,6 @@
         exitFullScreen();
       });
 
-
       function enterFullScreen(videoElement) {
         if (videoElement.requestFullscreen) {
           videoElement.requestFullscreen();
@@ -853,7 +910,7 @@
         }
       }
 
-      document.addEventListener('fullscreenchange', (event) => {
+      document.addEventListener("fullscreenchange", (event) => {
         if (!document.fullscreenElement) {
           localFullscreenBtn.style.display = "block";
           localExitFullscreenBtn.style.display = "none";
@@ -872,7 +929,7 @@
           remoteExitFullscreenBtn.style.display = "block";
         }
       });
-      document.addEventListener('webkitfullscreenchange', (event) => {
+      document.addEventListener("webkitfullscreenchange", (event) => {
         if (!document.webkitFullscreenElement) {
           localFullscreenBtn.style.display = "block";
           localExitFullscreenBtn.style.display = "none";
@@ -891,7 +948,7 @@
           remoteExitFullscreenBtn.style.display = "block";
         }
       });
-      document.addEventListener('mozfullscreenchange', (event) => {
+      document.addEventListener("mozfullscreenchange", (event) => {
         if (!document.mozFullScreenElement) {
           localFullscreenBtn.style.display = "block";
           localExitFullscreenBtn.style.display = "none";
@@ -910,7 +967,7 @@
           remoteExitFullscreenBtn.style.display = "block";
         }
       });
-      document.addEventListener('msfullscreenchange', (event) => {
+      document.addEventListener("msfullscreenchange", (event) => {
         if (!document.msFullscreenElement) {
           localFullscreenBtn.style.display = "block";
           localExitFullscreenBtn.style.display = "none";
@@ -930,7 +987,6 @@
         }
       });
 
-
       async function callUser(userId) {
         createPeerConnection();
         const offer = await peerConnection.createOffer();
@@ -944,33 +1000,44 @@
         const videoTrack = localStream.getVideoTracks()[0];
         if (videoTrack.enabled) {
           videoTrack.enabled = false;
-          toggleVideoBtn.innerHTML = '<i class="fas fa-video-slash"></i> Turn Camera On';
-          toggleVideoBtn.classList.remove('active');
+          toggleVideoBtn.innerHTML =
+            '<i class="fas fa-video-slash"></i> Turn Camera On';
+          toggleVideoBtn.classList.remove("active");
         } else {
           videoTrack.enabled = true;
-          toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
-          toggleVideoBtn.classList.add('active');
+          toggleVideoBtn.innerHTML =
+            '<i class="fas fa-video"></i> Turn Camera Off';
+          toggleVideoBtn.classList.add("active");
         }
       };
 
-      // Toggle audio
+      // Toggle audio (for WebRTC stream AND for translation pipeline)
       toggleAudioBtn.onclick = () => {
         if (!localStream) return;
         const audioTrack = localStream.getAudioTracks()[0];
         if (audioTrack.enabled) {
           audioTrack.enabled = false;
-          toggleAudioBtn.innerHTML = '<i class="fas fa-microphone-slash"></i> Unmute';
-          toggleAudioBtn.classList.remove('active');
+          toggleAudioBtn.innerHTML =
+            '<i class="fas fa-microphone-slash"></i> Unmute';
+          toggleAudioBtn.classList.remove("active");
+          // Disconnect audio worklet if muted to save processing
+          if (microphoneSource && audioWorkletNode) {
+            microphoneSource.disconnect(audioWorkletNode);
+          }
         } else {
           audioTrack.enabled = true;
           toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
-          toggleAudioBtn.classList.add('active');
+          toggleAudioBtn.classList.add("active");
+          // Reconnect audio worklet if unmuted
+          if (microphoneSource && audioWorkletNode) {
+            microphoneSource.connect(audioWorkletNode);
+          }
         }
       };
 
       // Disconnect call
       disconnectBtn.onclick = () => {
-        socket.emit("disconnect-call"); // No need to pass roomId, server knows
+        socket.emit("disconnect-call", roomId);
         endCall();
       };
 
@@ -991,35 +1058,50 @@
         }
 
         if (screenStream) {
-          screenStream.getTracks().forEach(track => track.stop());
+          screenStream.getTracks().forEach((track) => track.stop());
           screenStream = null;
         }
 
-        // Stop AudioContext for local audio processing
-        if (audioContext && audioContext.state !== 'closed') {
-            audioContext.close();
-            audioContext = null;
+        // Stop AudioWorklet processing
+        if (audioContextForMic) {
+            audioContextForMic.close();
+            audioContextForMic = null;
+            microphoneSource = null;
+            audioWorkletNode = null;
         }
-        // Stop AudioContext for translated audio playback
-        if (translatedAudioContext && translatedAudioContext.state !== 'closed') {
-            translatedAudioContext.close();
-            translatedAudioContext = null;
+        // Stop translated audio playback
+        if (audioContextForTranslated) {
+            audioContextForTranslated.close();
+            audioContextForTranslated = null;
+            audioQueue = [];
+            isPlaying = false;
         }
-        translatedAudioQueue = []; // Clear any pending audio
+
 
         callStatus.textContent = "Call Disconnected";
         toggleAudioBtn.disabled = true;
         toggleVideoBtn.disabled = true;
         shareScreenBtn.disabled = true;
         disconnectBtn.disabled = true;
+        toggleTranslationSubtitlesBtn.disabled = true;
 
         // Reset button states
-        toggleVideoBtn.classList.remove('active');
-        toggleVideoBtn.innerHTML = '<i class="fas fa-video"></i> Turn Camera Off';
-        toggleAudioBtn.classList.remove('active');
+        toggleVideoBtn.classList.remove("active");
+        toggleVideoBtn.innerHTML =
+          '<i class="fas fa-video"></i> Turn Camera Off';
+        toggleAudioBtn.classList.remove("active");
         toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
-        shareScreenBtn.classList.remove('active');
-        shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
+        shareScreenBtn.classList.remove("active");
+        shareScreenBtn.innerHTML =
+          '<i class="fas fa-desktop"></i> Share Screen';
+        toggleTranslationSubtitlesBtn.classList.remove('active');
+        toggleTranslationSubtitlesBtn.innerHTML = '<i class="fas fa-closed-captioning"></i> Toggle Subtitles';
+
+        // Hide subtitles
+        subtitleOverlay.style.display = 'none';
+        subtitleOriginal.textContent = '';
+        subtitleTranslated.textContent = '';
+        clearTimeout(subtitleTimeout);
       }
 
       // Start/stop screen sharing
@@ -1037,7 +1119,9 @@
             navigator.userAgent
           );
           if (isMobile) {
-            alert("Screen sharing is not fully supported on mobile browsers due to browser limitations.");
+            alert(
+              "Screen sharing is not fully supported on mobile browsers due to browser limitations."
+            );
             return;
           }
 
@@ -1051,29 +1135,36 @@
             stopScreenSharing();
           };
 
-          localVideo.srcObject = screenStream;
+          localVideo.srcObject = screenStream; // Display screen share locally
           isScreenSharing = true;
-          shareScreenBtn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop Sharing';
-          shareScreenBtn.classList.add('active');
+          shareScreenBtn.innerHTML =
+            '<i class="fas fa-stop-circle"></i> Stop Sharing';
+          shareScreenBtn.classList.add("active");
 
           if (peerConnection) {
-            const videoSender = peerConnection.getSenders().find(sender => sender.track && sender.track.kind === 'video');
+            const videoSender = peerConnection
+              .getSenders()
+              .find((sender) => sender.track.kind === "video");
             if (videoSender) {
-                videoSender.replaceTrack(screenTrack);
+              videoSender.replaceTrack(screenTrack);
             } else {
-                peerConnection.addTrack(screenTrack, screenStream);
+              // Should not happen if video track already exists
+              peerConnection.addTrack(screenTrack, screenStream);
             }
           }
         } catch (err) {
-          if (err.name === 'NotAllowedError') {
-              alert('Screen sharing permission denied. Please allow screen sharing to proceed.');
+          if (err.name === "NotAllowedError") {
+            alert(
+              "Screen sharing permission denied. Please allow screen sharing to proceed."
+            );
           } else {
-              alert("Could not share screen. Please try again.");
-              console.error("Error sharing screen:", err);
+            alert("Could not share screen. Please try again.");
+            console.error("Error sharing screen:", err);
           }
           isScreenSharing = false;
-          shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
-          shareScreenBtn.classList.remove('active');
+          shareScreenBtn.innerHTML =
+            '<i class="fas fa-desktop"></i> Share Screen';
+          shareScreenBtn.classList.remove("active");
         }
       }
 
@@ -1082,21 +1173,19 @@
           screenStream.getTracks().forEach((track) => track.stop());
           screenStream = null;
         }
-        localVideo.srcObject = localStream;
+        localVideo.srcObject = localStream; // Switch back to camera feed
         isScreenSharing = false;
-        shareScreenBtn.innerHTML = '<i class="fas fa-desktop"></i> Share Screen';
-        shareScreenBtn.classList.remove('active');
+        shareScreenBtn.innerHTML =
+          '<i class="fas fa-desktop"></i> Share Screen';
+        shareScreenBtn.classList.remove("active");
 
         if (peerConnection && localStream) {
-          const videoSender = peerConnection.getSenders().find(sender => sender.track && sender.track.kind === 'video');
+          const videoSender = peerConnection
+            .getSenders()
+            .find((sender) => sender.track.kind === "video");
           if (videoSender) {
-            // Replace with the original camera video track
-            const cameraVideoTrack = localStream.getVideoTracks()[0];
-            if (cameraVideoTrack) {
-                videoSender.replaceTrack(cameraVideoTrack);
-            } else {
-                console.warn("No camera video track available to replace screen share.");
-            }
+            // Replace screen share track with original camera track
+            videoSender.replaceTrack(localStream.getVideoTracks()[0]);
           }
         }
       }
@@ -1106,35 +1195,32 @@
         if (chatInput.value.trim()) {
           const message = chatInput.value;
           socket.emit("chat-message", { message, roomId });
-          displayMessage("You: " + message, 'self');
+          displayMessage("You: " + message, "self");
           chatInput.value = "";
         }
       };
 
-      chatInput.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter') {
+      chatInput.addEventListener("keypress", (event) => {
+        if (event.key === "Enter") {
           sendMessageButton.click();
         }
       });
 
       socket.on("chat-message", (messageData) => {
-        // Only display if not from self (for chat, display self messages locally)
-        if (messageData.userId !== socket.id) {
-            displayMessage(messageData.message, 'remote');
-        }
+        displayMessage(messageData.message, "remote");
       });
 
       function displayMessage(message, type) {
         const messageElement = document.createElement("div");
         messageElement.textContent = message;
-        messageElement.classList.add('chat-message');
-        if (type === 'self') {
-            messageElement.classList.add('self-message');
+        messageElement.classList.add("chat-message");
+        if (type === "self") {
+          messageElement.classList.add("self-message");
         } else {
-            messageElement.classList.add('remote-message');
+          messageElement.classList.add("remote-message");
         }
         chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to latest message
+        chatMessages.scrollTop = chatMessages.scrollHeight;
       }
     </script>
   </body>
